@@ -2,9 +2,16 @@ class Game {
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('game-canvas') });
+        this.renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('game-canvas'),
+            antialias: true, // 启用抗锯齿
+            alpha: false // 禁用alpha通道以提高性能
+        });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(0x2a2a2a);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比以提高性能
+        this.renderer.shadowMap.enabled = true; // 启用阴影以提高视觉效果
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 使用柔和阴影
 
         this.resources = {
             wood: 0,
@@ -41,13 +48,25 @@ class Game {
         this.gameStartedTime = Date.now();
         this.particleSystems = [];
         this.animatingNodes = [];
+        
+        // 初始化游戏设置
+        this.settings = this.loadSettings();
+        
+        // 显示加载界面
+        this.showLoadScreen();
 
         this.initCamera();
         this.initLighting();
         this.initTerrain();
         this.initResourceNodes();
         this.initEventListeners();
-        this.animate();
+        this.updateGoalDisplay();
+        
+        // 模拟加载过程
+        setTimeout(() => {
+            this.hideLoadScreen();
+            this.animate();
+        }, 2000);
     }
 
     initCamera() {
@@ -65,21 +84,28 @@ class Game {
     }
 
     initTerrain() {
-        const geometry = new THREE.PlaneGeometry(200, 200, 20, 20);
+        // 使用 BufferGeometry 替代 Geometry 以提高性能
+        const geometry = new THREE.PlaneBufferGeometry(200, 200, 50, 50);
+        
+        // 添加随机高度以创建地形起伏
+        const positions = geometry.attributes.position.array;
+        for (let i = 0; i < positions.length; i += 3) {
+            positions[i + 2] = Math.random() * 5 - 2.5;
+        }
+        geometry.attributes.position.needsUpdate = true;
+        geometry.computeVertexNormals();
+        
+        // 使用更高级的材质以提高视觉效果
         const material = new THREE.MeshStandardMaterial({
             color: 0x664422,
             side: THREE.DoubleSide,
-            roughness: 0.8
+            roughness: 0.8,
+            vertexColors: false
         });
+        
         const terrain = new THREE.Mesh(geometry, material);
         terrain.rotation.x = -Math.PI / 2;
         this.scene.add(terrain);
-
-        for (let i = 0; i < geometry.vertices.length; i++) {
-            const vertex = geometry.vertices[i];
-            vertex.z = Math.random() * 5 - 2.5;
-        }
-        geometry.verticesNeedUpdate = true;
     }
 
     initResourceNodes() {
@@ -237,6 +263,412 @@ class Game {
                 this.hideTooltip();
             });
         });
+        
+        // 资源交易系统事件监听器
+        const inputResource = document.getElementById('input-resource');
+        const outputResource = document.getElementById('output-resource');
+        const inputAmount = document.getElementById('input-amount');
+        const outputAmount = document.getElementById('output-amount');
+        const tradeRateInfo = document.getElementById('trade-rate-info');
+        const tradeBtn = document.getElementById('trade-btn');
+        const convertBtn = document.getElementById('convert-btn');
+        
+        const updateTradeOutput = () => {
+            const inputRes = inputResource.value;
+            const outputRes = outputResource.value;
+            const amount = parseInt(inputAmount.value) || 0;
+            
+            if (inputRes === outputRes) {
+                outputAmount.textContent = amount;
+                tradeRateInfo.textContent = '转换比例: 1:1';
+            } else {
+                // 交易比率：不同资源之间的转换比例
+                const tradeRate = this.getTradeRate(inputRes, outputRes);
+                outputAmount.textContent = Math.floor(amount * tradeRate);
+                tradeRateInfo.textContent = `转换比例: 1:${tradeRate.toFixed(2)}`;
+            }
+        };
+        
+        inputResource.addEventListener('change', updateTradeOutput);
+        outputResource.addEventListener('change', updateTradeOutput);
+        inputAmount.addEventListener('input', updateTradeOutput);
+        
+        tradeBtn.addEventListener('click', () => {
+            const inputRes = inputResource.value;
+            const outputRes = outputResource.value;
+            const inputAmt = parseInt(inputAmount.value) || 0;
+            const outputAmt = parseInt(outputAmount.textContent) || 0;
+            
+            if (inputRes !== outputRes && inputAmt > 0) {
+                // 检查是否有足够的输入资源
+                if (this.resources[inputRes] >= inputAmt) {
+                    // 检查输出资源是否有足够的存储容量
+                    if (this.resources[outputRes] + outputAmt <= this.resourceCapacity[outputRes]) {
+                        // 执行交易
+                        this.resources[inputRes] -= inputAmt;
+                        this.resources[outputRes] += outputAmt;
+                        this.updateResourceDisplay();
+                        this.showNotification(`成功交易: ${inputAmt} ${this.getResourceName(inputRes)} → ${outputAmt} ${this.getResourceName(outputRes)}`);
+                    } else {
+                        alert('输出资源存储容量不足！');
+                    }
+                } else {
+                    alert('输入资源不足！');
+                }
+            }
+        });
+        
+        convertBtn.addEventListener('click', () => {
+            const inputRes = inputResource.value;
+            const outputRes = outputResource.value;
+            const inputAmt = parseInt(inputAmount.value) || 0;
+            
+            if (inputRes !== outputRes && inputAmt > 0) {
+                const success = this.convertResources(inputRes, outputRes, inputAmt);
+                if (success) {
+                    const outputAmt = Math.floor(inputAmt * this.getTradeRate(inputRes, outputRes));
+                    this.showNotification(`成功转换: ${inputAmt + Math.floor(inputAmt * 0.1)} ${this.getResourceName(inputRes)} → ${outputAmt} ${this.getResourceName(outputRes)}`);
+                }
+            }
+        });
+        
+        // 初始化交易输出显示
+        updateTradeOutput();
+        
+        // 添加设置按钮点击事件
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.showSettingsMenu();
+            });
+        }
+    }
+
+    loadSettings() {
+        const defaultSettings = {
+            sound: 70,
+            music: 50,
+            graphics: 'medium',
+            shadows: true
+        };
+
+        try {
+            const savedSettings = localStorage.getItem('steelColonySettings');
+            return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
+        } catch (error) {
+            console.error('Failed to load settings:', error);
+            return defaultSettings;
+        }
+    }
+
+    saveSettings() {
+        try {
+            localStorage.setItem('steelColonySettings', JSON.stringify(this.settings));
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+        }
+    }
+
+    showSettingsMenu() {
+        this.hideBuildingMenu();
+        
+        const modal = document.createElement('div');
+        modal.className = 'settings-modal';
+        modal.id = 'settings-modal';
+        
+        const content = document.createElement('div');
+        content.className = 'settings-content';
+        
+        content.innerHTML = `
+            <h2>游戏设置</h2>
+            
+            <div class="setting-item">
+                <label for="sound-slider">音效音量: ${this.settings.sound}%</label>
+                <input type="range" id="sound-slider" min="0" max="100" value="${this.settings.sound}">
+            </div>
+            
+            <div class="setting-item">
+                <label for="music-slider">音乐音量: ${this.settings.music}%</label>
+                <input type="range" id="music-slider" min="0" max="100" value="${this.settings.music}">
+            </div>
+            
+            <div class="setting-item">
+                <label for="graphics-select">画质设置</label>
+                <select id="graphics-select">
+                    <option value="low" ${this.settings.graphics === 'low' ? 'selected' : ''}>低</option>
+                    <option value="medium" ${this.settings.graphics === 'medium' ? 'selected' : ''}>中</option>
+                    <option value="high" ${this.settings.graphics === 'high' ? 'selected' : ''}>高</option>
+                </select>
+            </div>
+            
+            <div class="setting-item">
+                <label for="shadows-toggle">阴影效果: ${this.settings.shadows ? '开启' : '关闭'}</label>
+                <input type="checkbox" id="shadows-toggle" ${this.settings.shadows ? 'checked' : ''}>
+            </div>
+            
+            <div class="setting-item">
+                <button id="save-btn">保存设置</button>
+                <button id="cancel-btn">取消</button>
+                <button id="save-game-btn" style="margin-top: 10px; width: 100%;">保存游戏</button>
+                <button id="load-game-btn" style="margin-top: 10px; width: 100%;">加载游戏</button>
+            </div>
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        // 添加事件监听器
+        const soundSlider = document.getElementById('sound-slider');
+        if (soundSlider) {
+            soundSlider.addEventListener('input', (e) => {
+                this.settings.sound = parseInt(e.target.value);
+                document.querySelector('label[for="sound-slider"]').textContent = `音效音量: ${this.settings.sound}%`;
+            });
+        }
+        
+        const musicSlider = document.getElementById('music-slider');
+        if (musicSlider) {
+            musicSlider.addEventListener('input', (e) => {
+                this.settings.music = parseInt(e.target.value);
+                document.querySelector('label[for="music-slider"]').textContent = `音乐音量: ${this.settings.music}%`;
+            });
+        }
+        
+        const graphicsSelect = document.getElementById('graphics-select');
+        if (graphicsSelect) {
+            graphicsSelect.addEventListener('change', (e) => {
+                this.settings.graphics = e.target.value;
+            });
+        }
+        
+        const shadowsToggle = document.getElementById('shadows-toggle');
+        if (shadowsToggle) {
+            shadowsToggle.addEventListener('change', (e) => {
+                this.settings.shadows = e.target.checked;
+                document.querySelector('label[for="shadows-toggle"]').textContent = `阴影效果: ${this.settings.shadows ? '开启' : '关闭'}`;
+            });
+        }
+        
+        const saveBtn = document.getElementById('save-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                this.saveSettings();
+                this.applySettings();
+                this.hideSettingsMenu();
+            });
+        }
+        
+        const cancelBtn = document.getElementById('cancel-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                this.hideSettingsMenu();
+            });
+        }
+        
+        const saveGameBtn = document.getElementById('save-game-btn');
+        if (saveGameBtn) {
+            saveGameBtn.addEventListener('click', () => {
+                this.saveGame();
+            });
+        }
+        
+        const loadGameBtn = document.getElementById('load-game-btn');
+        if (loadGameBtn) {
+            loadGameBtn.addEventListener('click', () => {
+                this.loadGame();
+            });
+        }
+    }
+
+    hideSettingsMenu() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    applySettings() {
+        // 应用图形设置
+        if (this.settings.graphics === 'low') {
+            this.renderer.setPixelRatio(1);
+            this.renderer.shadowMap.enabled = false;
+        } else if (this.settings.graphics === 'medium') {
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            this.renderer.shadowMap.enabled = this.settings.shadows;
+        } else if (this.settings.graphics === 'high') {
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.renderer.shadowMap.enabled = true;
+        }
+    }
+
+    showLoadScreen() {
+        const loadScreen = document.createElement('div');
+        loadScreen.className = 'load-screen';
+        loadScreen.id = 'load-screen';
+        
+        loadScreen.innerHTML = `
+            <h2>STEEL COLONY</h2>
+            <div class="load-bar">
+                <div class="load-progress" style="width: 0%"></div>
+            </div>
+            <div class="load-text">加载中...</div>
+        `;
+        
+        document.body.appendChild(loadScreen);
+        
+        // 模拟加载进度
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 5;
+            if (progress > 100) {
+                clearInterval(interval);
+                return;
+            }
+            
+            const progressBar = document.querySelector('.load-progress');
+            const loadText = document.querySelector('.load-text');
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
+            }
+            if (loadText) {
+                loadText.textContent = `加载中... ${progress}%`;
+            }
+        }, 100);
+    }
+
+    hideLoadScreen() {
+        const loadScreen = document.getElementById('load-screen');
+        if (loadScreen) {
+            loadScreen.remove();
+        }
+    }
+
+    saveGame() {
+        const gameData = {
+            resources: this.resources,
+            buildings: this.buildings,
+            gameGoals: this.gameGoals,
+            currentGoalIndex: this.currentGoalIndex,
+            gameStartedTime: this.gameStartedTime
+        };
+        
+        try {
+            localStorage.setItem('steelColonySave', JSON.stringify(gameData));
+            this.showNotification('游戏保存成功！');
+        } catch (error) {
+            console.error('Failed to save game:', error);
+            this.showNotification('游戏保存失败！');
+        }
+    }
+
+    loadGame() {
+        try {
+            const savedGame = localStorage.getItem('steelColonySave');
+            if (savedGame) {
+                const gameData = JSON.parse(savedGame);
+                
+                // 恢复游戏状态
+                this.resources = gameData.resources;
+                this.buildings = gameData.buildings;
+                this.gameGoals = gameData.gameGoals;
+                this.currentGoalIndex = gameData.currentGoalIndex;
+                this.gameStartedTime = gameData.gameStartedTime;
+                
+                // 重新创建建筑模型
+                for (const building of this.buildings) {
+                    let model;
+                    switch (building.type) {
+                        case 'mine':
+                            model = this.createMineModel(building.position);
+                            break;
+                        case 'farm':
+                            model = this.createFarmModel(building.position);
+                            break;
+                        case 'factory':
+                            model = this.createFactoryModel(building.position);
+                            break;
+                        case 'warehouse':
+                            model = this.createWarehouseModel(building.position);
+                            break;
+                    }
+                    building.mesh = model;
+                }
+                
+                this.updateResourceDisplay();
+                this.updateGoalDisplay();
+                this.showNotification('游戏加载成功！');
+                this.hideSettingsMenu();
+            } else {
+                this.showNotification('没有找到保存的游戏！');
+            }
+        } catch (error) {
+            console.error('Failed to load game:', error);
+            this.showNotification('游戏加载失败！');
+        }
+    }
+
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.left = '50%';
+        notification.style.transform = 'translateX(-50%)';
+        notification.style.background = 'rgba(0, 102, 204, 0.9)';
+        notification.style.color = '#fff';
+        notification.style.padding = '10px 20px';
+        notification.style.borderRadius = '5px';
+        notification.style.zIndex = '4000';
+        notification.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+    
+    getTradeRate(inputRes, outputRes) {
+        // 定义不同资源之间的交易比率
+        // 高级资源的转换比例不同，保持游戏平衡性
+        const rates = {
+            wood: { stone: 0.8, food: 0.9, steel: 0.5, iron: 0.6, coal: 0.7, oil: 0.6 },
+            stone: { wood: 0.8, food: 0.9, steel: 0.5, iron: 0.6, coal: 0.7, oil: 0.6 },
+            food: { wood: 0.8, stone: 0.8, steel: 0.4, iron: 0.5, coal: 0.6, oil: 0.5 },
+            steel: { wood: 1.5, stone: 1.5, food: 2.0, iron: 1.2, coal: 1.2, oil: 1.3 },
+            iron: { wood: 1.0, stone: 1.0, food: 1.1, steel: 0.7, coal: 0.9, oil: 0.8 },
+            coal: { wood: 1.0, stone: 1.0, food: 1.1, steel: 0.7, iron: 0.9, oil: 0.8 },
+            oil: { wood: 1.1, stone: 1.1, food: 1.2, steel: 0.8, iron: 1.0, coal: 1.0 }
+        };
+        
+        return rates[inputRes][outputRes] || 1;
+    }
+    
+    convertResources(inputRes, outputRes, amount) {
+        // 资源转换功能，包含消耗机制
+        const baseRate = this.getTradeRate(inputRes, outputRes);
+        const conversionCost = Math.floor(amount * 0.1); // 10% 的转换损耗
+        const actualInput = amount + conversionCost;
+        
+        // 检查是否有足够的输入资源
+        if (this.resources[inputRes] >= actualInput) {
+            // 检查输出资源是否有足够的存储容量
+            const outputAmount = Math.floor(amount * baseRate);
+            if (this.resources[outputRes] + outputAmount <= this.resourceCapacity[outputRes]) {
+                // 执行转换
+                this.resources[inputRes] -= actualInput;
+                this.resources[outputRes] += outputAmount;
+                this.updateResourceDisplay();
+                return true;
+            } else {
+                alert('输出资源存储容量不足！');
+                return false;
+            }
+        } else {
+            alert(`输入资源不足！需要 ${actualInput} ${this.getResourceName(inputRes)}`);
+            return false;
+        }
     }
 
     showTooltip(event, buildType) {
@@ -571,16 +1003,19 @@ class Game {
         }
 
         if (resourceType) {
-            this.resources[resourceType] += 1;
-            
-            // Create particle effect
-            this.createParticleSystem(node.position, particleColor);
-            
-            // Animate resource node
-            this.animateResourceNode(node);
-            
-            // Show resource gain text
-            this.showResourceGainText(node.position, resourceType, 1);
+            // 检查是否有足够的存储容量
+            if (this.resources[resourceType] < this.resourceCapacity[resourceType]) {
+                this.resources[resourceType] += 1;
+                
+                // Create particle effect
+                this.createParticleSystem(node.position, particleColor);
+                
+                // Animate resource node
+                this.animateResourceNode(node);
+                
+                // Show resource gain text
+                this.showResourceGainText(node.position, resourceType, 1);
+            }
         }
 
         node.amount -= 1;
@@ -748,9 +1183,19 @@ class Game {
         document.getElementById('wood-count').textContent = this.resources.wood;
         document.getElementById('stone-count').textContent = this.resources.stone;
         document.getElementById('food-count').textContent = this.resources.food;
-        if (document.getElementById('steel-count')) {
-            document.getElementById('steel-count').textContent = this.resources.steel;
-        }
+        document.getElementById('steel-count').textContent = this.resources.steel;
+        document.getElementById('iron-count').textContent = this.resources.iron;
+        document.getElementById('coal-count').textContent = this.resources.coal;
+        document.getElementById('oil-count').textContent = this.resources.oil;
+        
+        // Update capacity display
+        document.getElementById('wood-capacity').textContent = this.resourceCapacity.wood;
+        document.getElementById('stone-capacity').textContent = this.resourceCapacity.stone;
+        document.getElementById('food-capacity').textContent = this.resourceCapacity.food;
+        document.getElementById('steel-capacity').textContent = this.resourceCapacity.steel;
+        document.getElementById('iron-capacity').textContent = this.resourceCapacity.iron;
+        document.getElementById('coal-capacity').textContent = this.resourceCapacity.coal;
+        document.getElementById('oil-capacity').textContent = this.resourceCapacity.oil;
     }
 
     updateGoalDisplay() {
@@ -881,12 +1326,81 @@ class Game {
         
         animateText();
     }
+    
+    showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'game-notification';
+        notification.textContent = message;
+        notification.style.position = 'absolute';
+        notification.style.top = '50%';
+        notification.style.left = '50%';
+        notification.style.transform = 'translate(-50%, -50%)';
+        notification.style.backgroundColor = 'rgba(0, 102, 204, 0.9)';
+        notification.style.color = '#fff';
+        notification.style.padding = '15px 25px';
+        notification.style.borderRadius = '5px';
+        notification.style.border = '1px solid #0099ff';
+        notification.style.boxShadow = '0 0 15px rgba(0, 153, 255, 0.7)';
+        notification.style.fontSize = '14px';
+        notification.style.fontWeight = 'bold';
+        notification.style.pointerEvents = 'none';
+        notification.style.zIndex = '2000';
+        notification.style.opacity = '0';
+        notification.style.transition = 'all 0.3s ease';
+        
+        document.body.appendChild(notification);
+        
+        // Fade in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+        }, 100);
+        
+        // Fade out and remove
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }, 2000);
+    }
 
     animate() {
         requestAnimationFrame(() => this.animate());
         this.render();
         this.updateBuildings();
         this.updateGoalDisplay();
+        this.updateAnimations();
+    }
+
+    updateAnimations() {
+        // 为建筑添加动画效果
+        for (const building of this.buildings) {
+            if (building.mesh) {
+                // 添加轻微的缩放动画
+                const time = Date.now() * 0.001;
+                const scale = 1 + Math.sin(time + building.position.x + building.position.z) * 0.01;
+                building.mesh.scale.set(scale, scale, scale);
+            }
+        }
+        
+        // 为资源节点添加动画效果
+        for (const node of this.resourcesNodes) {
+            if (node.type === 'tree' && node.mesh) {
+                // 为树木添加摇摆效果
+                const time = Date.now() * 0.001;
+                const swayAmount = 0.05;
+                
+                // 树干摇摆
+                if (node.mesh[0]) {
+                    node.mesh[0].rotation.z = Math.sin(time + node.position.x) * swayAmount;
+                }
+                
+                // 树叶摇摆
+                if (node.mesh[1]) {
+                    node.mesh[1].rotation.z = Math.sin(time + node.position.x + 1) * swayAmount * 1.5;
+                }
+            }
+        }
     }
 
     render() {
@@ -910,12 +1424,41 @@ class Game {
             wood: baseCapacity + warehouseCapacityBonus,
             stone: baseCapacity + warehouseCapacityBonus,
             food: baseCapacity + warehouseCapacityBonus,
-            steel: baseCapacity + warehouseCapacityBonus
+            steel: baseCapacity + warehouseCapacityBonus,
+            iron: baseCapacity + warehouseCapacityBonus,
+            coal: baseCapacity + warehouseCapacityBonus,
+            oil: baseCapacity + warehouseCapacityBonus
         };
+        
+        // 处理建筑维护成本
+        if (!this.lastMaintenanceTime) {
+            this.lastMaintenanceTime = now;
+        }
+        
+        const maintenanceTimeElapsed = (now - this.lastMaintenanceTime) / 1000;
+        if (maintenanceTimeElapsed >= 5) { // 每5秒进行一次维护
+            let allBuildingsFunctional = true;
+            
+            for (const building of this.buildings) {
+                if (building.type === 'warehouse') continue; // 仓库不需要维护
+                
+                const maintenanceCost = this.getMaintenanceCost(building.type, building.level);
+                if (this.canAfford(maintenanceCost)) {
+                    this.payCost(maintenanceCost);
+                } else {
+                    // 资源不足，建筑停止工作
+                    building.isFunctional = false;
+                    allBuildingsFunctional = false;
+                }
+            }
+            
+            this.lastMaintenanceTime = now;
+            this.updateResourceDisplay();
+        }
         
         // 处理资源生产
         for (const building of this.buildings) {
-            if (building.type === 'warehouse') continue; // 仓库不生产资源
+            if (building.type === 'warehouse' || (building.isFunctional === false)) continue; // 仓库不生产资源，非功能性建筑也不生产
             
             const timeElapsed = (now - building.lastProductionTime) / 1000; // 转换为秒
             
@@ -952,6 +1495,23 @@ class Game {
                 }
             }
         }
+    }
+    
+    getMaintenanceCost(type, level) {
+        const baseCost = {
+            mine: { stone: 1, wood: 1 },
+            farm: { wood: 1, food: 1 },
+            factory: { wood: 2, stone: 2, steel: 1 }
+        };
+        
+        const costMultiplier = Math.pow(1.2, level - 1);
+        const cost = {};
+        
+        for (const [resource, amount] of Object.entries(baseCost[type])) {
+            cost[resource] = Math.floor(amount * costMultiplier);
+        }
+        
+        return cost;
     }
 }
 

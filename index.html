@@ -131,6 +131,119 @@
             text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
             pointer-events: none;
         }
+        .settings-button {
+            position: absolute;
+            top: 20px;
+            right: 250px;
+            background-color: rgba(20, 20, 30, 0.9);
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 12px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+        .settings-button:hover {
+            background-color: rgba(0, 102, 204, 0.9);
+            box-shadow: 0 0 15px rgba(0, 153, 255, 0.7);
+        }
+        .settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .settings-content {
+            background: rgba(20, 20, 30, 0.95);
+            color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            min-width: 300px;
+        }
+        .settings-content h2 {
+            color: #00ffff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .settings-content .setting-item {
+            margin: 15px 0;
+        }
+        .settings-content label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .settings-content select,
+        .settings-content input[type="range"] {
+            width: 100%;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #444;
+            border-radius: 3px;
+            color: #fff;
+        }
+        .settings-content button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #0066cc;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .settings-content button:hover {
+            background: #0088ff;
+        }
+        .load-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+        .load-screen h2 {
+            color: #00ffff;
+            margin-bottom: 30px;
+            font-size: 36px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        .load-bar {
+            width: 300px;
+            height: 20px;
+            background: rgba(20, 20, 30, 0.9);
+            border: 1px solid #00ffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        .load-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #0066cc);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        .load-text {
+            margin-top: 10px;
+            color: #fff;
+            font-size: 14px;
+        }
         .tooltip {
             position: absolute;
             background-color: rgba(0, 0, 0, 0.9);
@@ -149,12 +262,16 @@
         <canvas id="game-canvas"></canvas>
         <div id="game-ui">
             <div id="game-title">STEEL COLONY</div>
+            <button id="settings-btn" class="settings-button">设置</button>
             <div id="resource-panel">
                 <h3>资源</h3>
-                <div>木材: <span id="wood-count">0</span></div>
-                <div>石头: <span id="stone-count">0</span></div>
-                <div>食物: <span id="food-count">0</span></div>
-                <div>钢铁: <span id="steel-count">0</span></div>
+                <div>木材: <span id="wood-count">0</span> / <span id="wood-capacity">100</span></div>
+                <div>石头: <span id="stone-count">0</span> / <span id="stone-capacity">100</span></div>
+                <div>食物: <span id="food-count">0</span> / <span id="food-capacity">100</span></div>
+                <div>钢铁: <span id="steel-count">0</span> / <span id="steel-capacity">100</span></div>
+                <div>铁矿: <span id="iron-count">0</span> / <span id="iron-capacity">100</span></div>
+                <div>煤炭: <span id="coal-count">0</span> / <span id="coal-capacity">100</span></div>
+                <div>石油: <span id="oil-count">0</span> / <span id="oil-capacity">100</span></div>
             </div>
             <div id="goal-panel">
                 <h3>游戏目标</h3>
@@ -166,6 +283,40 @@
                 <div class="build-item" data-type="farm">农场</div>
                 <div class="build-item" data-type="factory">工厂</div>
                 <div class="build-item" data-type="warehouse">仓库</div>
+            </div>
+            <div id="trade-panel" style="position: absolute; bottom: 100px; left: 20px; background-color: rgba(20, 20, 30, 0.9); color: #fff; padding: 15px; border-radius: 5px; border: 1px solid #444; box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); pointer-events: auto; min-width: 250px;">
+                <h3>资源交易</h3>
+                <div style="margin-bottom: 10px;">
+                    <label>输入: </label>
+                    <select id="input-resource">
+                        <option value="wood">木材</option>
+                        <option value="stone">石头</option>
+                        <option value="food">食物</option>
+                        <option value="steel">钢铁</option>
+                        <option value="iron">铁矿</option>
+                        <option value="coal">煤炭</option>
+                        <option value="oil">石油</option>
+                    </select>
+                    <input type="number" id="input-amount" value="1" min="1" style="width: 50px; margin-left: 10px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <label>输出: </label>
+                    <select id="output-resource">
+                        <option value="wood">木材</option>
+                        <option value="stone">石头</option>
+                        <option value="food">食物</option>
+                        <option value="steel">钢铁</option>
+                        <option value="iron">铁矿</option>
+                        <option value="coal">煤炭</option>
+                        <option value="oil">石油</option>
+                    </select>
+                    <span id="output-amount" style="margin-left: 10px; color: #00ff00;">0</span>
+                </div>
+                <div style="margin-bottom: 10px; font-size: 11px; color: #888;">
+                    <span id="trade-rate-info">转换比例: 1:1</span>
+                </div>
+                <button id="trade-btn" style="padding: 8px 15px; background-color: #333; border: 1px solid #555; color: #fff; cursor: pointer; border-radius: 3px; width: 100%; transition: all 0.2s ease;">交易</button>
+                <button id="convert-btn" style="margin-top: 10px; padding: 8px 15px; background-color: #0066cc; border: 1px solid #0099ff; color: #fff; cursor: pointer; border-radius: 3px; width: 100%; transition: all 0.2s ease;">资源转换</button>
             </div>
         </div>
     </div>
