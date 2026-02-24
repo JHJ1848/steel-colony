@@ -1,0 +1,436 @@
+# 运输工具系统设计
+
+## 1. 运输工具数据结构
+
+### 运输工具类型
+| 载具名称 | 解锁等级 | 基础运输速度 | 最大载重 | 购买成本 | 维护成本 | 描述 |
+|---------|---------|-------------|---------|---------|---------|------|
+| 人工 | 1 | 1 | 5 | 0 | 1 | 基础运输方式，速度慢，载重小 |
+| 推车 | 2 | 2 | 15 | 100木材, 50石头 | 2 | 比人工快，载重更大 |
+| 拖拉机 | 3 | 4 | 30 | 300木材, 200石头, 50钢铁 | 5 | 速度更快，载重更大 |
+| 货车 | 4 | 6 | 50 | 500木材, 400石头, 200钢铁 | 10 | 高速运输，大载重 |
+| 火车 | 5 | 10 | 100 | 1000木材, 800石头, 500钢铁, 200石油 | 20 | 最高级运输工具，速度和载重最大 |
+
+### 数据结构
+```javascript
+// 运输工具数据结构
+this.transportation = {
+    current: 'manual', // 当前使用的运输工具
+    vehicles: {
+        manual: {
+            name: '人工',
+            speed: 1,
+            capacity: 5,
+            unlocked: true,
+            purchased: true,
+            level: 1,
+            maxLevel: 3
+        },
+        cart: {
+            name: '推车',
+            speed: 2,
+            capacity: 15,
+            unlocked: false,
+            purchased: false,
+            level: 0,
+            maxLevel: 3
+        },
+        tractor: {
+            name: '拖拉机',
+            speed: 4,
+            capacity: 30,
+            unlocked: false,
+            purchased: false,
+            level: 0,
+            maxLevel: 3
+        },
+        truck: {
+            name: '货车',
+            speed: 6,
+            capacity: 50,
+            unlocked: false,
+            purchased: false,
+            level: 0,
+            maxLevel: 3
+        },
+        train: {
+            name: '火车',
+            speed: 10,
+            capacity: 100,
+            unlocked: false,
+            purchased: false,
+            level: 0,
+            maxLevel: 3
+        }
+    }
+};
+```
+
+## 2. 解锁逻辑
+
+### 基于基地等级的解锁
+- 基地等级 1: 解锁人工
+- 基地等级 2: 解锁推车
+- 基地等级 3: 解锁拖拉机
+- 基地等级 4: 解锁货车
+- 基地等级 5: 解锁火车
+
+### 解锁检测
+```javascript
+// 在updateColonyStatus方法中添加解锁检测
+updateColonyStatus() {
+    // 现有代码...
+    
+    // 检查运输工具解锁
+    this.checkTransportationUnlock();
+}
+
+checkTransportationUnlock() {
+    const level = this.colonyStatus.level;
+    
+    if (level >= 2 && !this.transportation.vehicles.cart.unlocked) {
+        this.transportation.vehicles.cart.unlocked = true;
+        this.showNotification('解锁了新的运输工具: 推车');
+    }
+    
+    if (level >= 3 && !this.transportation.vehicles.tractor.unlocked) {
+        this.transportation.vehicles.tractor.unlocked = true;
+        this.showNotification('解锁了新的运输工具: 拖拉机');
+    }
+    
+    if (level >= 4 && !this.transportation.vehicles.truck.unlocked) {
+        this.transportation.vehicles.truck.unlocked = true;
+        this.showNotification('解锁了新的运输工具: 货车');
+    }
+    
+    if (level >= 5 && !this.transportation.vehicles.train.unlocked) {
+        this.transportation.vehicles.train.unlocked = true;
+        this.showNotification('解锁了新的运输工具: 火车');
+    }
+}
+```
+
+## 3. 商店模块设计
+
+### UI界面
+1. **商店按钮** - 位于游戏界面顶部
+2. **商店面板** - 显示可购买的运输工具
+3. **运输工具卡片** - 显示每个运输工具的信息和购买/升级按钮
+4. **当前运输工具显示** - 显示当前使用的运输工具
+
+### 商店面板布局
+```html
+<div id="shop-panel" style="position: absolute; top: 20px; right: 250px; background-color: rgba(20, 20, 30, 0.9); color: #fff; padding: 15px; border-radius: 5px; border: 1px solid #444; box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); pointer-events: auto; min-width: 200px;">
+    <h3>商店</h3>
+    <div id="transportation-shop">
+        <h4>运输工具</h4>
+        <div class="vehicle-item" data-type="manual">
+            <div>人工 (已解锁)</div>
+            <div>速度: 1</div>
+            <div>载重: 5</div>
+            <button class="select-vehicle-btn">使用</button>
+        </div>
+        <!-- 其他运输工具项 -->
+    </div>
+</div>
+```
+
+### 购买逻辑
+```javascript
+purchaseVehicle(type) {
+    const vehicle = this.transportation.vehicles[type];
+    const cost = this.getVehicleCost(type);
+    
+    if (!vehicle.unlocked) {
+        this.showNotification('该运输工具尚未解锁');
+        return;
+    }
+    
+    if (vehicle.purchased) {
+        this.showNotification('该运输工具已购买');
+        return;
+    }
+    
+    if (this.canAfford(cost)) {
+        this.payCost(cost);
+        vehicle.purchased = true;
+        vehicle.level = 1;
+        this.showNotification(`成功购买 ${vehicle.name}`);
+        this.updateShopDisplay();
+    } else {
+        this.showNotification('资源不足，无法购买');
+    }
+}
+
+upgradeVehicle(type) {
+    const vehicle = this.transportation.vehicles[type];
+    
+    if (!vehicle.purchased) {
+        this.showNotification('请先购买该运输工具');
+        return;
+    }
+    
+    if (vehicle.level >= vehicle.maxLevel) {
+        this.showNotification('该运输工具已达到最高等级');
+        return;
+    }
+    
+    const upgradeCost = this.getVehicleUpgradeCost(type, vehicle.level);
+    if (this.canAfford(upgradeCost)) {
+        this.payCost(upgradeCost);
+        vehicle.level += 1;
+        vehicle.speed *= 1.2; // 每级提升20%速度
+        vehicle.capacity *= 1.3; // 每级提升30%载重
+        this.showNotification(`成功升级 ${vehicle.name} 到等级 ${vehicle.level}`);
+        this.updateShopDisplay();
+    } else {
+        this.showNotification('资源不足，无法升级');
+    }
+}
+
+selectVehicle(type) {
+    const vehicle = this.transportation.vehicles[type];
+    
+    if (!vehicle.purchased) {
+        this.showNotification('请先购买该运输工具');
+        return;
+    }
+    
+    this.transportation.current = type;
+    this.showNotification(`已切换到 ${vehicle.name}`);
+    this.updateShopDisplay();
+}
+```
+
+## 4. 运输工具对资源运输的影响
+
+### 资源收集速度影响
+```javascript
+collectResource(node, index) {
+    // 现有代码...
+    
+    // 应用运输工具速度加成
+    const currentVehicle = this.transportation.vehicles[this.transportation.current];
+    const collectionDelay = 1000 / currentVehicle.speed; // 速度越快，延迟越短
+    
+    // 资源收集动画延迟
+    setTimeout(() => {
+        // 资源收集逻辑
+    }, collectionDelay);
+}
+```
+
+### 建筑生产速度影响
+```javascript
+updateBuildings() {
+    // 现有代码...
+    
+    // 应用运输工具速度加成到建筑生产
+    const currentVehicle = this.transportation.vehicles[this.transportation.current];
+    const speedMultiplier = currentVehicle.speed / 2; // 基础速度为1时，生产速度不变
+    
+    // 资源生产逻辑中应用速度加成
+    const productionAmount = Math.floor(timeElapsed * building.productionRate * speedMultiplier);
+}
+```
+
+### 资源存储影响
+```javascript
+// 运输工具载重影响资源收集上限
+collectResource(node, index) {
+    // 现有代码...
+    
+    const currentVehicle = this.transportation.vehicles[this.transportation.current];
+    const maxCollectAmount = currentVehicle.capacity;
+    
+    // 限制单次收集量不超过载具载重
+    const collectAmount = Math.min(1, maxCollectAmount);
+    
+    // 资源收集逻辑
+}
+```
+
+## 5. 数据存储
+
+### 存档/加载
+```javascript
+saveGame() {
+    const gameData = {
+        // 现有数据...
+        transportation: this.transportation
+    };
+    
+    // 保存逻辑...
+}
+
+loadGame() {
+    // 加载逻辑...
+    
+    if (gameData.transportation) {
+        this.transportation = gameData.transportation;
+    }
+    
+    // 其他加载逻辑...
+}
+```
+
+## 6. UI更新
+
+### 商店显示更新
+```javascript
+updateShopDisplay() {
+    const shopPanel = document.getElementById('transportation-shop');
+    if (!shopPanel) return;
+    
+    shopPanel.innerHTML = '<h4>运输工具</h4>';
+    
+    Object.entries(this.transportation.vehicles).forEach(([type, vehicle]) => {
+        const vehicleItem = document.createElement('div');
+        vehicleItem.className = 'vehicle-item';
+        vehicleItem.dataset.type = type;
+        
+        let status = vehicle.unlocked ? '已解锁' : '未解锁';
+        if (vehicle.purchased) status = '已购买';
+        
+        let buttons = '';
+        if (vehicle.unlocked) {
+            if (!vehicle.purchased) {
+                const cost = this.getVehicleCost(type);
+                buttons = `<button class="purchase-vehicle-btn" data-type="${type}">购买 (${this.formatCost(cost)})</button>`;
+            } else {
+                buttons = `
+                    <button class="select-vehicle-btn" data-type="${type}">${this.transportation.current === type ? '当前使用' : '使用'}</button>
+                `;
+                if (vehicle.level < vehicle.maxLevel) {
+                    const upgradeCost = this.getVehicleUpgradeCost(type, vehicle.level);
+                    buttons += `<button class="upgrade-vehicle-btn" data-type="${type}">升级 (${this.formatCost(upgradeCost)})</button>`;
+                }
+            }
+        }
+        
+        vehicleItem.innerHTML = `
+            <div>${vehicle.name} (${status})</div>
+            <div>速度: ${vehicle.speed.toFixed(1)}</div>
+            <div>载重: ${Math.floor(vehicle.capacity)}</div>
+            <div>等级: ${vehicle.level}/${vehicle.maxLevel}</div>
+            ${buttons}
+        `;
+        
+        shopPanel.appendChild(vehicleItem);
+    });
+    
+    // 添加事件监听器
+    this.addShopEventListeners();
+}
+
+addShopEventListeners() {
+    // 购买按钮事件
+    document.querySelectorAll('.purchase-vehicle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.purchaseVehicle(btn.dataset.type);
+        });
+    });
+    
+    // 升级按钮事件
+    document.querySelectorAll('.upgrade-vehicle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.upgradeVehicle(btn.dataset.type);
+        });
+    });
+    
+    // 选择按钮事件
+    document.querySelectorAll('.select-vehicle-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.selectVehicle(btn.dataset.type);
+        });
+    });
+}
+```
+
+## 7. 成本计算
+
+### 购买成本
+```javascript
+getVehicleCost(type) {
+    const costs = {
+        cart: { wood: 100, stone: 50 },
+        tractor: { wood: 300, stone: 200, steel: 50 },
+        truck: { wood: 500, stone: 400, steel: 200 },
+        train: { wood: 1000, stone: 800, steel: 500, oil: 200 }
+    };
+    return costs[type] || {};
+}
+```
+
+### 升级成本
+```javascript
+getVehicleUpgradeCost(type, level) {
+    const baseCosts = {
+        manual: { food: 10 },
+        cart: { wood: 50, stone: 25 },
+        tractor: { wood: 150, stone: 100, steel: 25 },
+        truck: { wood: 250, stone: 200, steel: 100 },
+        train: { wood: 500, stone: 400, steel: 250, oil: 100 }
+    };
+    
+    const baseCost = baseCosts[type] || {};
+    const costMultiplier = Math.pow(1.5, level - 1);
+    const cost = {};
+    
+    for (const [resource, amount] of Object.entries(baseCost)) {
+        cost[resource] = Math.floor(amount * costMultiplier);
+    }
+    
+    return cost;
+}
+```
+
+## 8. 维护成本
+
+### 运输工具维护
+```javascript
+// 在建筑维护逻辑中添加运输工具维护
+updateBuildings() {
+    // 现有代码...
+    
+    // 运输工具维护成本
+    const currentVehicle = this.transportation.vehicles[this.transportation.current];
+    const maintenanceCost = this.getVehicleMaintenanceCost(this.transportation.current);
+    
+    if (this.canAfford(maintenanceCost)) {
+        this.payCost(maintenanceCost);
+    } else {
+        // 运输工具损坏，降为基础速度
+        currentVehicle.speed = currentVehicle.speed * 0.5;
+        this.showNotification(`${currentVehicle.name} 因维护不足而性能下降`);
+    }
+}
+
+getVehicleMaintenanceCost(type) {
+    const maintenanceCosts = {
+        manual: { food: 1 },
+        cart: { wood: 1, stone: 1 },
+        tractor: { wood: 2, stone: 2, steel: 1 },
+        truck: { wood: 3, stone: 3, steel: 2 },
+        train: { wood: 5, stone: 5, steel: 3, oil: 2 }
+    };
+    return maintenanceCosts[type] || {};
+}
+```
+
+## 9. 视觉效果
+
+### 运输工具模型
+- **人工**: 简单的人形模型
+- **推车**: 带轮子的推车模型
+- **拖拉机**: 拖拉机模型
+- **货车**: 卡车模型
+- **火车**: 火车头模型
+
+### 动画效果
+- 运输工具在资源节点和建筑之间移动的动画
+- 运输工具升级时的视觉效果
+- 运输工具维护状态的视觉反馈

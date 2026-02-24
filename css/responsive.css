@@ -1,0 +1,252 @@
+/* 导入CSS变量 */
+@import './variables.css';
+
+/* 响应式布局 */
+
+/* 大屏幕 (桌面) */
+@media (min-width: 1200px) {
+  #resource-panel {
+    min-width: 180px;
+  }
+  
+  #goal-panel {
+    min-width: 220px;
+  }
+  
+  #trade-panel {
+    min-width: 280px;
+  }
+  
+  .colony-status {
+    min-width: 220px;
+  }
+}
+
+/* 中等屏幕 (平板) */
+@media (max-width: 992px) {
+  #game-title {
+    font-size: 20px;
+  }
+  
+  #build-menu {
+    flex-wrap: wrap;
+    justify-content: center;
+    bottom: 10px;
+    padding: 10px;
+  }
+  
+  #resource-panel {
+    top: 10px;
+    left: 10px;
+    padding: 10px;
+    min-width: 140px;
+  }
+  
+  #goal-panel {
+    top: 10px;
+    right: 10px;
+    padding: 10px;
+    min-width: 180px;
+  }
+  
+  #trade-panel {
+    bottom: 80px;
+    left: 10px;
+    padding: 10px;
+    min-width: 220px;
+  }
+  
+  .colony-status {
+    bottom: 80px;
+    right: 10px;
+    padding: 10px;
+    min-width: 180px;
+  }
+  
+  .settings-button {
+    right: 200px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .settings-content {
+    min-width: 280px;
+    padding: 20px;
+  }
+  
+  .story-content {
+    max-width: 500px;
+    padding: 30px;
+  }
+}
+
+/* 小屏幕 (手机) */
+@media (max-width: 768px) {
+  #game-title {
+    font-size: 18px;
+    top: 10px;
+  }
+  
+  #build-menu {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+  }
+  
+  .build-item {
+    width: 100%;
+    text-align: center;
+    padding: 6px 12px;
+  }
+  
+  #resource-panel {
+    top: 50px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+    max-width: 100%;
+  }
+  
+  #goal-panel {
+    top: 200px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+    max-width: 100%;
+  }
+  
+  #trade-panel {
+    bottom: 150px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+    max-width: 100%;
+  }
+  
+  .colony-status {
+    bottom: 150px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+    max-width: 100%;
+  }
+  
+  .settings-button {
+    top: 10px;
+    right: 10px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .settings-content {
+    min-width: 260px;
+    padding: 15px;
+    margin: 10px;
+  }
+  
+  .story-content {
+    max-width: 90%;
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  .story-content h2 {
+    font-size: 20px;
+  }
+  
+  .load-screen h2 {
+    font-size: 28px;
+  }
+  
+  .load-bar {
+    width: 250px;
+    height: 15px;
+  }
+}
+
+/* 超小屏幕 (小手机) */
+@media (max-width: 576px) {
+  #game-title {
+    font-size: 16px;
+  }
+  
+  #resource-panel h3,
+  #goal-panel h3,
+  #trade-panel h3,
+  .colony-status h3 {
+    font-size: 12px;
+  }
+  
+  #resource-panel div,
+  #goal-panel div,
+  #trade-panel div,
+  .colony-status div {
+    font-size: 10px;
+  }
+  
+  .settings-content h2 {
+    font-size: 18px;
+  }
+  
+  .settings-content label {
+    font-size: 12px;
+  }
+  
+  .story-content h2 {
+    font-size: 18px;
+  }
+  
+  .story-content p {
+    font-size: 11px;
+  }
+  
+  .load-screen h2 {
+    font-size: 24px;
+  }
+  
+  .load-bar {
+    width: 200px;
+  }
+}
+
+/* 横向布局适配 */
+@media (orientation: landscape) and (max-height: 600px) {
+  #resource-panel {
+    top: 10px;
+    left: 10px;
+    padding: 10px;
+    min-width: 120px;
+  }
+  
+  #goal-panel {
+    top: 10px;
+    right: 10px;
+    padding: 10px;
+    min-width: 150px;
+  }
+  
+  #trade-panel {
+    bottom: 10px;
+    left: 10px;
+    padding: 10px;
+    min-width: 180px;
+  }
+  
+  .colony-status {
+    bottom: 10px;
+    right: 10px;
+    padding: 10px;
+    min-width: 150px;
+  }
+  
+  #build-menu {
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-wrap: nowrap;
+  }
+}

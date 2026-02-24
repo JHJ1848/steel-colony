@@ -1,0 +1,18 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M16 12L24 4L32 12L40 20L32 28L24 20L16 28L8 20L16 12Z" fill="#333333"/>
+  <path d="M16 28L24 20L32 28L40 36L32 44L24 36L16 44L8 36L16 28Z" fill="#333333"/>
+  <path d="M24 4L32 12L24 20L16 12L24 4Z" fill="#222222"/>
+  <path d="M24 20L32 28L24 36L16 28L24 20Z" fill="#222222"/>
+  <path d="M32 12L40 20L32 28L24 20L32 12Z" fill="#444444"/>
+  <path d="M16 12L24 20L16 28L8 20L16 12Z" fill="#444444"/>
+  <path d="M32 28L40 36L32 44L24 36L32 28Z" fill="#444444"/>
+  <path d="M16 28L24 36L16 44L8 36L16 28Z" fill="#444444"/>
+  <circle cx="24" cy="24" r="2" fill="#555555"/>
+  <circle cx="18" cy="18" r="1.5" fill="#555555"/>
+  <circle cx="30" cy="18" r="1.5" fill="#555555"/>
+  <circle cx="18" cy="30" r="1.5" fill="#555555"/>
+  <circle cx="30" cy="30" r="1.5" fill="#555555"/>
+  <path d="M20 16L28 16" stroke="#555555" stroke-width="2" stroke-linecap="round"/>
+  <path d="M20 24L28 24" stroke="#555555" stroke-width="2" stroke-linecap="round"/>
+  <path d="M20 32L28 32" stroke="#555555" stroke-width="2" stroke-linecap="round"/>
+</svg>

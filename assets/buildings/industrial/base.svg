@@ -1,0 +1,55 @@
+<svg width="240" height="160" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+  <!-- 工业基地主体建筑 -->
+  <rect x="40" y="80" width="160" height="60" fill="#666666" />
+  
+  <!-- 建筑屋顶 -->
+  <polygon points="30,80 40,60 200,60 210,80" fill="#555555" />
+  
+  <!-- 建筑细节 -->
+  <rect x="50" y="90" width="140" height="40" fill="#444444" />
+  
+  <!-- 建筑窗户 -->
+  <rect x="60" y="100" width="20" height="15" fill="#777777" />
+  <rect x="90" y="100" width="20" height="15" fill="#777777" />
+  <rect x="120" y="100" width="20" height="15" fill="#777777" />
+  <rect x="150" y="100" width="20" height="15" fill="#777777" />
+  
+  <!-- 建筑门 -->
+  <rect x="110" y="115" width="20" height="25" fill="#333333" />
+  
+  <!-- 烟囱 -->
+  <rect x="60" y="30" width="20" height="50" fill="#444444" />
+  <rect x="160" y="40" width="20" height="40" fill="#444444" />
+  
+  <!-- 烟囱顶部 -->
+  <rect x="55" y="25" width="30" height="5" fill="#555555" />
+  <rect x="155" y="35" width="30" height="5" fill="#555555" />
+  
+  <!-- 设备和管道 -->
+  <rect x="20" y="100" width="20" height="40" fill="#666666" />
+  <rect x="200" y="90" width="20" height="50" fill="#666666" />
+  
+  <!-- 管道 -->
+  <rect x="20" y="80" width="20" height="20" fill="#777777" />
+  <rect x="200" y="70" width="20" height="20" fill="#777777" />
+  
+  <!-- 基地地面 -->
+  <rect x="0" y="140" width="240" height="20" fill="#333333" />
+  
+  <!-- 地面细节 -->
+  <rect x="0" y="145" width="240" height="2" fill="#444444" />
+  <rect x="20" y="140" width="2" height="20" fill="#444444" />
+  <rect x="60" y="140" width="2" height="20" fill="#444444" />
+  <rect x="100" y="140" width="2" height="20" fill="#444444" />
+  <rect x="140" y="140" width="2" height="20" fill="#444444" />
+  <rect x="180" y="140" width="2" height="20" fill="#444444" />
+  <rect x="220" y="140" width="2" height="20" fill="#444444" />
+  
+  <!-- 工业设备 -->
+  <circle cx="40" cy="120" r="10" fill="#555555" />
+  <circle cx="210" cy="110" r="15" fill="#555555" />
+  
+  <!-- 设备细节 -->
+  <rect x="35" y="115" width="10" height="10" fill="#888888" />
+  <rect x="205" y="105" width="10" height="10" fill="#888888" />
+</svg>

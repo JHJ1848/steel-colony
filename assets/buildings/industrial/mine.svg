@@ -1,0 +1,36 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 矿场主体 -->
+  <rect x="24" y="60" width="80" height="48" rx="2" fill="#5D4037"/>
+  <rect x="28" y="64" width="72" height="40" rx="1" fill="#4E342E"/>
+  
+  <!-- 矿井入口 -->
+  <rect x="52" y="80" width="24" height="28" fill="#3E2723"/>
+  <rect x="56" y="84" width="16" height="20" fill="#2D1B18"/>
+  
+  <!-- 矿场设备 -->
+  <rect x="32" y="48" width="16" height="12" fill="#616161"/>
+  <rect x="40" y="40" width="8" height="8" fill="#757575"/>
+  
+  <rect x="80" y="48" width="16" height="12" fill="#616161"/>
+  <rect x="88" y="40" width="8" height="8" fill="#757575"/>
+  
+  <!-- 传送带 -->
+  <path d="M40 60L40 48" stroke="#9E9E9E" stroke-width="2"/>
+  <path d="M88 60L88 48" stroke="#9E9E9E" stroke-width="2"/>
+  
+  <!-- 矿石堆 -->
+  <path d="M32 100L48 100L56 108L24 108L32 100Z" fill="#795548"/>
+  <path d="M80 100L96 100L104 108L72 108L80 100Z" fill="#795548"/>
+  
+  <!-- 细节 -->
+  <path d="M24 60L24 108L104 108L104 60" stroke="#6D4C41" stroke-width="2"/>
+  <path d="M28 64L28 104L100 104L100 64" stroke="#5D4037" stroke-width="1"/>
+  <path d="M40 60L40 108" stroke="#6D4C41" stroke-width="1"/>
+  <path d="M56 60L56 108" stroke="#6D4C41" stroke-width="1"/>
+  <path d="M72 60L72 108" stroke="#6D4C41" stroke-width="1"/>
+  <path d="M88 60L88 108" stroke="#6D4C41" stroke-width="1"/>
+  
+  <!-- 矿灯效果 -->
+  <circle cx="64" cy="80" r="8" fill="#FF9800" opacity="0.3"/>
+  <circle cx="64" cy="80" r="4" fill="#FF5722" opacity="0.5"/>
+</svg>

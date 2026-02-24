@@ -1,0 +1,38 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 仓库主体 -->
+  <rect x="20" y="48" width="88" height="64" rx="2" fill="#455A64"/>
+  <rect x="24" y="52" width="80" height="56" rx="1" fill="#37474F"/>
+  
+  <!-- 屋顶 -->
+  <path d="M16 48L64 32L112 48" fill="#546E7A"/>
+  
+  <!-- 大门 -->
+  <rect x="48" y="72" width="32" height="32" fill="#263238"/>
+  <rect x="52" y="76" width="24" height="24" fill="#1A237E"/>
+  
+  <!-- 窗户 -->
+  <rect x="32" y="60" width="8" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="88" y="60" width="8" height="8" fill="#00ffff" opacity="0.3"/>
+  
+  <rect x="32" y="76" width="8" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="88" y="76" width="8" height="8" fill="#00ffff" opacity="0.3"/>
+  
+  <rect x="32" y="92" width="8" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="88" y="92" width="8" height="8" fill="#00ffff" opacity="0.3"/>
+  
+  <!-- 细节 -->
+  <path d="M20 48L20 112L108 112L108 48" stroke="#546E7A" stroke-width="2"/>
+  <path d="M24 52L24 108L104 108L104 52" stroke="#455A64" stroke-width="1"/>
+  <path d="M40 48L40 112" stroke="#546E7A" stroke-width="1"/>
+  <path d="M56 48L56 112" stroke="#546E7A" stroke-width="1"/>
+  <path d="M72 48L72 112" stroke="#546E7A" stroke-width="1"/>
+  <path d="M88 48L88 112" stroke="#546E7A" stroke-width="1"/>
+  
+  <!-- 货物堆 -->
+  <rect x="24" y="104" width="16" height="8" fill="#607D8B"/>
+  <rect x="88" y="104" width="16" height="8" fill="#607D8B"/>
+  
+  <!-- 仓库标识 -->
+  <rect x="60" y="40" width="8" height="8" fill="#00ffff" opacity="0.5"/>
+  <path d="M62 42L66 42M64 42L64 46" stroke="#00ffff" stroke-width="1" stroke-linecap="round"/>
+</svg>

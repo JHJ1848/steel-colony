@@ -1,0 +1,148 @@
+/* 导入CSS变量 */
+@import '../variables.css';
+
+/* 按钮悬停动画 */
+.build-item,
+.settings-button,
+.settings-content button,
+.story-content button,
+#trade-btn,
+#convert-btn {
+  transition: all var(--transition-fast);
+}
+
+.build-item:hover {
+  background-color: var(--accent-color);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+.build-item.active {
+  background-color: var(--accent-color);
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.settings-button:hover {
+  background-color: var(--accent-hover);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.settings-content button:hover,
+.story-content button:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+#trade-btn:hover {
+  background-color: var(--accent-color);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+#convert-btn:hover {
+  background-color: var(--accent-hover);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+/* 进度条动画 */
+.load-progress {
+  transition: width var(--transition-normal);
+}
+
+/* 模态框动画 */
+.settings-modal,
+.story-modal,
+.load-screen {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+}
+
+.settings-modal.active,
+.story-modal.active,
+.load-screen.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.settings-content,
+.story-content {
+  transform: scale(0.9);
+  opacity: 0;
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.settings-modal.active .settings-content,
+.story-modal.active .story-content {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* 工具提示动画 */
+.tooltip {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast), transform var(--transition-fast);
+  transform: translateY(5px);
+}
+
+.tooltip.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* 面板淡入动画 */
+.panel {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 标题闪烁动画 */
+#game-title {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    text-shadow: var(--shadow-md);
+  }
+  50% {
+    text-shadow: var(--shadow-xl);
+  }
+  100% {
+    text-shadow: var(--shadow-md);
+  }
+}
+
+/* 加载动画 */
+@keyframes loadPulse {
+  0% {
+    box-shadow: var(--shadow-sm);
+  }
+  50% {
+    box-shadow: var(--shadow-lg);
+  }
+  100% {
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+.load-bar {
+  animation: loadPulse 2s infinite;
+}

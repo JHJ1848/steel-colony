@@ -4,342 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Steel Colony - 工业殖民地</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #1a1a1a;
-            font-family: 'Courier New', monospace;
-            color: #fff;
-        }
-        #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-        #game-canvas {
-            display: block;
-        }
-        #game-ui {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-        #resource-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background-color: rgba(20, 20, 30, 0.9);
-            color: #fff;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-            pointer-events: auto;
-            min-width: 150px;
-        }
-        #resource-panel h3 {
-            margin: 0 0 10px 0;
-            color: #00ffff;
-            font-size: 14px;
-            border-bottom: 1px solid #444;
-            padding-bottom: 5px;
-        }
-        #resource-panel div {
-            margin: 5px 0;
-            font-size: 12px;
-        }
-        #resource-panel span {
-            color: #00ff00;
-            float: right;
-        }
-        #goal-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background-color: rgba(20, 20, 30, 0.9);
-            color: #fff;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-            pointer-events: auto;
-            min-width: 200px;
-        }
-        #goal-panel h3 {
-            margin: 0 0 10px 0;
-            color: #00ffff;
-            font-size: 14px;
-            border-bottom: 1px solid #444;
-            padding-bottom: 5px;
-        }
-        #goal-panel div {
-            margin: 5px 0;
-            font-size: 12px;
-        }
-        #current-goal {
-            margin-bottom: 10px;
-        }
-        #goal-progress {
-            color: #00ff00;
-        }
-        #build-menu {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(20, 20, 30, 0.9);
-            color: #fff;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-            display: flex;
-            gap: 15px;
-            pointer-events: auto;
-        }
-        .build-item {
-            padding: 8px 15px;
-            background-color: #333;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s ease;
-            border: 1px solid #555;
-        }
-        .build-item:hover {
-            background-color: #555;
-            box-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
-        }
-        .build-item.active {
-            background-color: #0066cc;
-            border-color: #0099ff;
-            box-shadow: 0 0 10px rgba(0, 153, 255, 0.7);
-        }
-        #game-title {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 24px;
-            font-weight: bold;
-            color: #00ffff;
-            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-            pointer-events: none;
-        }
-        .settings-button {
-            position: absolute;
-            top: 20px;
-            right: 250px;
-            background-color: rgba(20, 20, 30, 0.9);
-            color: #fff;
-            border: 1px solid #444;
-            border-radius: 5px;
-            padding: 8px 15px;
-            cursor: pointer;
-            font-size: 12px;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-            transition: all 0.2s ease;
-        }
-        .settings-button:hover {
-            background-color: rgba(0, 102, 204, 0.9);
-            box-shadow: 0 0 15px rgba(0, 153, 255, 0.7);
-        }
-        .settings-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-        .settings-content {
-            background: rgba(20, 20, 30, 0.95);
-            color: #fff;
-            padding: 30px;
-            border-radius: 10px;
-            border: 1px solid #00ffff;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-            min-width: 300px;
-        }
-        .settings-content h2 {
-            color: #00ffff;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .settings-content .setting-item {
-            margin: 15px 0;
-        }
-        .settings-content label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .settings-content select,
-        .settings-content input[type="range"] {
-            width: 100%;
-            padding: 5px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid #444;
-            border-radius: 3px;
-            color: #fff;
-        }
-        .settings-content button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: #0066cc;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        .settings-content button:hover {
-            background: #0088ff;
-        }
-        .load-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 3000;
-        }
-        .load-screen h2 {
-            color: #00ffff;
-            margin-bottom: 30px;
-            font-size: 36px;
-            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-        }
-        .load-bar {
-            width: 300px;
-            height: 20px;
-            background: rgba(20, 20, 30, 0.9);
-            border: 1px solid #00ffff;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-        }
-        .load-progress {
-            height: 100%;
-            background: linear-gradient(90deg, #00ffff, #0066cc);
-            border-radius: 10px;
-            transition: width 0.3s ease;
-        }
-        .load-text {
-            margin-top: 10px;
-            color: #fff;
-            font-size: 14px;
-        }
-        .tooltip {
-            position: absolute;
-            background-color: rgba(0, 0, 0, 0.9);
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-size: 11px;
-            pointer-events: none;
-            z-index: 1000;
-            border: 1px solid #444;
-        }
-        .story-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 4000;
-        }
-        .story-content {
-            background: rgba(20, 20, 30, 0.95);
-            color: #fff;
-            padding: 40px;
-            border-radius: 10px;
-            border: 1px solid #00ffff;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-            max-width: 600px;
-            text-align: center;
-            line-height: 1.6;
-        }
-        .story-content h2 {
-            color: #00ffff;
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-        .story-content p {
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-        .story-content button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: #0066cc;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-        }
-        .story-content button:hover {
-            background: #0088ff;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-        }
-        .colony-status {
-            position: absolute;
-            bottom: 100px;
-            right: 20px;
-            background-color: rgba(20, 20, 30, 0.9);
-            color: #fff;
-            padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #444;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-            pointer-events: auto;
-            min-width: 200px;
-        }
-        .colony-status h3 {
-            margin: 0 0 10px 0;
-            color: #00ffff;
-            font-size: 14px;
-            border-bottom: 1px solid #444;
-            padding-bottom: 5px;
-        }
-        .colony-status div {
-            margin: 5px 0;
-            font-size: 12px;
-        }
-        .colony-status span {
-            color: #00ff00;
-            float: right;
-        }
-    </style>
+    <!-- 外部样式文件 -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components/panels.css">
+    <link rel="stylesheet" href="css/components/buttons.css">
+    <link rel="stylesheet" href="css/components/modals.css">
+    <link rel="stylesheet" href="css/components/animations.css">
+    <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
     <div id="game-container">
         <canvas id="game-canvas"></canvas>
         <div id="game-ui">
             <div id="game-title">STEEL COLONY</div>
+            <button id="tech-btn" class="settings-button" style="right: 450px;">科技</button>
+            <button id="shop-btn" class="settings-button" style="right: 350px;">商店</button>
             <button id="settings-btn" class="settings-button">设置</button>
-            <div id="resource-panel">
+            <div id="shop-panel" style="display: none; position: absolute; top: 70px; right: 300px; background-color: rgba(20, 20, 30, 0.9); color: #fff; padding: 15px; border-radius: 5px; border: 1px solid #444; box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); pointer-events: auto; min-width: 250px; max-height: 400px; overflow-y: auto;">
+                <h3>商店</h3>
+                <div id="transportation-shop">
+                    <h4>运输工具</h4>
+                    <!-- 运输工具项将通过JavaScript动态添加 -->
+                </div>
+            </div>
+            <div id="resource-panel" class="panel">
                 <h3>资源</h3>
                 <div>木材: <span id="wood-count">0</span> / <span id="wood-capacity">100</span></div>
                 <div>石头: <span id="stone-count">0</span> / <span id="stone-capacity">100</span></div>
@@ -349,7 +37,7 @@
                 <div>煤炭: <span id="coal-count">0</span> / <span id="coal-capacity">100</span></div>
                 <div>石油: <span id="oil-count">0</span> / <span id="oil-capacity">100</span></div>
             </div>
-            <div id="goal-panel">
+            <div id="goal-panel" class="panel">
                 <h3>游戏目标</h3>
                 <div id="current-goal">正在加载...</div>
                 <div id="goal-progress">进度: 0%</div>
@@ -360,50 +48,37 @@
                 <div class="build-item" data-type="factory">工厂</div>
                 <div class="build-item" data-type="warehouse">仓库</div>
             </div>
-            <div id="trade-panel" style="position: absolute; bottom: 100px; left: 20px; background-color: rgba(20, 20, 30, 0.9); color: #fff; padding: 15px; border-radius: 5px; border: 1px solid #444; box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); pointer-events: auto; min-width: 250px;">
-                <h3>资源交易</h3>
-                <div style="margin-bottom: 10px;">
-                    <label>输入: </label>
-                    <select id="input-resource">
-                        <option value="wood">木材</option>
-                        <option value="stone">石头</option>
-                        <option value="food">食物</option>
-                        <option value="steel">钢铁</option>
-                        <option value="iron">铁矿</option>
-                        <option value="coal">煤炭</option>
-                        <option value="oil">石油</option>
-                    </select>
-                    <input type="number" id="input-amount" value="1" min="1" style="width: 50px; margin-left: 10px;">
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <label>输出: </label>
-                    <select id="output-resource">
-                        <option value="wood">木材</option>
-                        <option value="stone">石头</option>
-                        <option value="food">食物</option>
-                        <option value="steel">钢铁</option>
-                        <option value="iron">铁矿</option>
-                        <option value="coal">煤炭</option>
-                        <option value="oil">石油</option>
-                    </select>
-                    <span id="output-amount" style="margin-left: 10px; color: #00ff00;">0</span>
-                </div>
-                <div style="margin-bottom: 10px; font-size: 11px; color: #888;">
-                    <span id="trade-rate-info">转换比例: 1:1</span>
-                </div>
-                <button id="trade-btn" style="padding: 8px 15px; background-color: #333; border: 1px solid #555; color: #fff; cursor: pointer; border-radius: 3px; width: 100%; transition: all 0.2s ease;">交易</button>
-                <button id="convert-btn" style="margin-top: 10px; padding: 8px 15px; background-color: #0066cc; border: 1px solid #0099ff; color: #fff; cursor: pointer; border-radius: 3px; width: 100%; transition: all 0.2s ease;">资源转换</button>
-            </div>
-            <div id="colony-status" class="colony-status">
+            <div id="colony-status" class="colony-status panel">
                 <h3>殖民地状态</h3>
                 <div>殖民地等级: <span id="colony-level">1</span></div>
                 <div>建筑总数: <span id="total-buildings">0</span></div>
                 <div>人口: <span id="colony-population">10</span></div>
                 <div>繁荣度: <span id="colony-prosperity">25%</span></div>
             </div>
+            <div id="tech-panel" style="display: none; position: absolute; top: 70px; right: 400px; background-color: rgba(20, 20, 30, 0.9); color: #fff; padding: 15px; border-radius: 5px; border: 1px solid #444; box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); pointer-events: auto; min-width: 300px; max-height: 500px; overflow-y: auto;">
+                <h3>科技树</h3>
+                <div id="tech-tree-content">
+                    <!-- 科技树内容将通过JavaScript动态添加 -->
+                </div>
+            </div>
+            <div id="message-window" style="position: absolute; bottom: 20px; left: 20px; background-color: rgba(20, 20, 30, 0.9); color: #fff; border-radius: 5px; border: 1px solid #444; box-shadow: 0 0 10px rgba(0, 255, 255, 0.3); pointer-events: auto; width: 300px; max-height: 200px; overflow-y: auto;">
+                <div style="padding: 10px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0; color: #00ffff;">游戏消息</h4>
+                    <button id="message-window-toggle" style="background: none; border: none; color: #00ffff; cursor: pointer; font-size: 16px;">▼</button>
+                </div>
+                <div id="message-content" style="padding: 10px; font-size: 12px; line-height: 1.4;">
+                    <!-- 消息内容将通过JavaScript动态添加 -->
+                </div>
+            </div>
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="resource-loader.js"></script>
+    <script src="objects.js"></script>
+    <script src="unlock.js"></script>
+    <script src="tech-tree.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

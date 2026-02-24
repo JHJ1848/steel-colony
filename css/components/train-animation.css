@@ -1,0 +1,96 @@
+.train-container {
+  position: relative;
+  display: inline-block;
+}
+
+.train-wheel {
+  animation: wheel-rotate 1s linear infinite;
+  transform-origin: center;
+}
+
+.train-exhaust {
+  position: absolute;
+  top: 10px;
+  right: 120px;
+  width: 5px;
+  height: 20px;
+  background: rgba(100, 100, 100, 0.5);
+  border-radius: 5px;
+  animation: exhaust-smoke 1s ease-in-out infinite;
+}
+
+.train-exhaust::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 15px;
+  height: 15px;
+  background: rgba(100, 100, 100, 0.3);
+  border-radius: 50%;
+  animation: exhaust-puff 1s ease-in-out infinite;
+}
+
+.train-exhaust::after {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -8px;
+  width: 20px;
+  height: 20px;
+  background: rgba(100, 100, 100, 0.2);
+  border-radius: 50%;
+  animation: exhaust-puff 1s ease-in-out infinite 0.2s;
+}
+
+.train-move {
+  animation: train-drive 5s linear infinite;
+}
+
+@keyframes wheel-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes exhaust-smoke {
+  0% {
+    height: 0;
+    opacity: 0;
+  }
+  50% {
+    height: 20px;
+    opacity: 0.5;
+  }
+  100% {
+    height: 30px;
+    opacity: 0;
+  }
+}
+
+@keyframes exhaust-puff {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes train-drive {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-200px);
+  }
+}

@@ -1,0 +1,40 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 工厂主体 -->
+  <rect x="20" y="40" width="88" height="60" rx="2" fill="#444444"/>
+  <rect x="24" y="44" width="80" height="52" rx="1" fill="#333333"/>
+  
+  <!-- 屋顶 -->
+  <path d="M16 40L64 20L112 40" fill="#555555"/>
+  
+  <!-- 烟囱 -->
+  <rect x="80" y="16" width="8" height="24" fill="#666666"/>
+  <rect x="78" y="12" width="12" height="4" fill="#777777"/>
+  
+  <!-- 窗户 -->
+  <rect x="32" y="52" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="48" y="52" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="64" y="52" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="80" y="52" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  
+  <rect x="32" y="68" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="48" y="68" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="64" y="68" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  <rect x="80" y="68" width="12" height="8" fill="#00ffff" opacity="0.3"/>
+  
+  <!-- 门 -->
+  <rect x="56" y="76" width="16" height="24" fill="#222222"/>
+  <rect x="62" y="84" width="4" height="16" fill="#00ffff" opacity="0.2"/>
+  
+  <!-- 细节 -->
+  <path d="M20 40L20 100L108 100L108 40" stroke="#666666" stroke-width="2"/>
+  <path d="M24 44L24 96L104 96L104 44" stroke="#555555" stroke-width="1"/>
+  <path d="M40 40L40 100" stroke="#666666" stroke-width="1"/>
+  <path d="M56 40L56 100" stroke="#666666" stroke-width="1"/>
+  <path d="M72 40L72 100" stroke="#666666" stroke-width="1"/>
+  <path d="M88 40L88 100" stroke="#666666" stroke-width="1"/>
+  
+  <!-- 烟雾效果 -->
+  <circle cx="84" cy="12" r="4" fill="#888888" opacity="0.6"/>
+  <circle cx="88" cy="8" r="3" fill="#999999" opacity="0.5"/>
+  <circle cx="80" cy="6" r="3" fill="#999999" opacity="0.5"/>
+</svg>

@@ -1,0 +1,53 @@
+:root {
+  /* 颜色变量 */
+  --primary-bg: #1a1a1a;
+  --panel-bg: rgba(20, 20, 30, 0.9);
+  --panel-border: #444;
+  --text-color: #fff;
+  --primary-color: #00ffff;
+  --success-color: #00ff00;
+  --accent-color: #0066cc;
+  --accent-hover: #0088ff;
+  --shadow-color: rgba(0, 255, 255, 0.3);
+  --shadow-hover: rgba(0, 255, 255, 0.5);
+  --modal-bg: rgba(0, 0, 0, 0.8);
+  --load-bg: rgba(0, 0, 0, 0.9);
+  --tooltip-bg: rgba(0, 0, 0, 0.9);
+  
+  /* 字体变量 */
+  --font-family: 'Courier New', monospace;
+  --font-size-small: 11px;
+  --font-size-normal: 12px;
+  --font-size-medium: 14px;
+  --font-size-large: 24px;
+  --font-size-xlarge: 36px;
+  
+  /* 间距变量 */
+  --spacing-xs: 5px;
+  --spacing-sm: 8px;
+  --spacing-md: 15px;
+  --spacing-lg: 20px;
+  --spacing-xl: 30px;
+  --spacing-xxl: 40px;
+  
+  /* 边框半径 */
+  --border-radius-sm: 3px;
+  --border-radius-md: 5px;
+  --border-radius-lg: 10px;
+  
+  /* 阴影 */
+  --shadow-sm: 0 0 5px var(--shadow-color);
+  --shadow-md: 0 0 10px var(--shadow-color);
+  --shadow-lg: 0 0 15px var(--shadow-hover);
+  --shadow-xl: 0 0 20px var(--shadow-hover);
+  
+  /* 过渡效果 */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  
+  /* 布局 */
+  --panel-min-width: 150px;
+  --panel-min-width-lg: 200px;
+  --load-bar-width: 300px;
+  --load-bar-height: 20px;
+}

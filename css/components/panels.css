@@ -1,0 +1,54 @@
+/* 导入CSS变量 */
+@import '../variables.css';
+
+/* 资源面板样式 */
+#resource-panel {
+  position: absolute;
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+  min-width: var(--panel-min-width);
+}
+
+/* 目标面板样式 */
+#goal-panel {
+  position: absolute;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  min-width: var(--panel-min-width-lg);
+}
+
+#current-goal {
+  margin-bottom: var(--spacing-md);
+}
+
+#goal-progress {
+  color: var(--success-color);
+}
+
+/* 殖民地状态面板样式 */
+.colony-status {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: var(--panel-min-width-lg);
+  text-align: center;
+}
+
+/* 建筑菜单样式 */
+#build-menu {
+  position: absolute;
+  bottom: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--panel-bg);
+  color: var(--text-color);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  gap: var(--spacing-md);
+  pointer-events: auto;
+}
+

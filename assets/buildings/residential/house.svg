@@ -1,0 +1,38 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 住宅主体 -->
+  <rect x="32" y="60" width="64" height="52" rx="2" fill="#795548"/>
+  <rect x="36" y="64" width="56" height="44" rx="1" fill="#6D4C41"/>
+  
+  <!-- 屋顶 -->
+  <path d="M28 60L64 36L100 60" fill="#5D4037"/>
+  
+  <!-- 门 -->
+  <rect x="60" y="88" width="8" height="24" fill="#4E342E"/>
+  <rect x="62" y="96" width="4" height="16" fill="#3E2723"/>
+  
+  <!-- 窗户 -->
+  <rect x="44" y="72" width="12" height="12" fill="#00ffff" opacity="0.3"/>
+  <rect x="72" y="72" width="12" height="12" fill="#00ffff" opacity="0.3"/>
+  
+  <rect x="44" y="92" width="12" height="12" fill="#00ffff" opacity="0.3"/>
+  <rect x="72" y="92" width="12" height="12" fill="#00ffff" opacity="0.3"/>
+  
+  <!-- 烟囱 -->
+  <rect x="48" y="44" width="6" height="16" fill="#5D4037"/>
+  <circle cx="51" cy="44" r="3" fill="#6D4C41"/>
+  
+  <!-- 细节 -->
+  <path d="M32 60L32 112L96 112L96 60" stroke="#6D4C41" stroke-width="2"/>
+  <path d="M36 64L36 108L92 108L92 64" stroke="#5D4037" stroke-width="1"/>
+  <path d="M48 60L48 112" stroke="#6D4C41" stroke-width="1"/>
+  <path d="M64 60L64 112" stroke="#6D4C41" stroke-width="1"/>
+  <path d="M80 60L80 112" stroke="#6D4C41" stroke-width="1"/>
+  
+  <!-- 烟雾效果 -->
+  <circle cx="51" cy="40" r="3" fill="#E0E0E0" opacity="0.6"/>
+  <circle cx="54" cy="38" r="2" fill="#F5F5F5" opacity="0.5"/>
+  
+  <!-- 门前台阶 -->
+  <rect x="58" y="112" width="12" height="4" fill="#6D4C41"/>
+  <rect x="56" y="116" width="16" height="4" fill="#5D4037"/>
+</svg>

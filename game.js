@@ -1,3 +1,72 @@
+// 音频管理类
+class AudioManager {
+    constructor() {
+        this.audioContext = null;
+        this.audioBuffers = new Map();
+        this.audioSources = new Map();
+        this.volume = 0.7;
+    }
+    
+    async init() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (error) {
+            console.warn('Audio context not supported:', error);
+        }
+    }
+    
+    async loadAudio(name, url) {
+        if (!this.audioContext) return;
+        
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load audio: ${url}`);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            this.audioBuffers.set(name, audioBuffer);
+            console.log(`Loaded audio: ${name}`);
+        } catch (error) {
+            console.warn(`Failed to load audio ${name}:`, error);
+        }
+    }
+    
+    playSound(name, volume = this.volume) {
+        if (!this.audioContext || !this.audioBuffers.has(name)) {
+            console.log(`Playing ${name} sound (muted - audio not loaded)`);
+            return;
+        }
+        
+        try {
+            // 停止之前的相同音效
+            if (this.audioSources.has(name)) {
+                this.audioSources.get(name).stop();
+            }
+            
+            const source = this.audioContext.createBufferSource();
+            source.buffer = this.audioBuffers.get(name);
+            
+            const gainNode = this.audioContext.createGain();
+            gainNode.gain.value = volume;
+            
+            source.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            source.start();
+            this.audioSources.set(name, source);
+            
+            source.onended = () => {
+                this.audioSources.delete(name);
+            };
+        } catch (error) {
+            console.warn(`Failed to play sound ${name}:`, error);
+        }
+    }
+    
+    setVolume(volume) {
+        this.volume = Math.max(0, Math.min(1, volume));
+    }
+}
+
 class Game {
     constructor() {
         this.scene = new THREE.Scene();
@@ -36,6 +105,18 @@ class Game {
         this.buildings = [];
         this.resourcesNodes = [];
         this.selectedBuildType = null;
+        
+        // 初始化游戏对象管理器
+        this.objectManager = new GameObjectManager(this.scene);
+        
+        // 初始化音频管理器
+        this.audioManager = new AudioManager();
+        
+        // 初始化解锁系统
+        this.unlockSystem = new UnlockSystem(this);
+        
+        // 初始化科技树系统
+        this.techTree = new TechTree(this);
         this.gameGoals = [
             { type: 'build', target: 5, building: 'mine', description: '建造 5 个矿场' },
             { type: 'build', target: 3, building: 'farm', description: '建造 3 个农场' },
@@ -49,12 +130,109 @@ class Game {
         this.particleSystems = [];
         this.animatingNodes = [];
         
+        // 键盘状态跟踪
+        this.keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false
+        };
+        
+        // 相机移动速度
+        this.cameraSpeed = 0.5;
+        
+        // 事件节流计时器
+        this.lastKeyEventTime = 0;
+        this.keyEventThrottle = 16; // 约60FPS
+        
+        // 实例化网格管理
+        this.instancedMeshes = {
+            tree: null,
+            stone: null,
+            iron: null,
+            coal: null,
+            oil: null
+        };
+        this.instanceCount = {
+            tree: 0,
+            stone: 0,
+            iron: 0,
+            coal: 0,
+            oil: 0
+        };
+        this.maxInstances = 50; // 每种资源的最大实例数
+        
+        // 资源节点对象池
+        this.resourcePool = {
+            tree: [],
+            stone: [],
+            iron: [],
+            coal: [],
+            oil: []
+        };
+        this.poolSize = 20; // 每种资源的对象池大小
+        
         // 殖民地状态
         this.colonyStatus = {
             level: 1,
             population: 10,
             prosperity: 25
         };
+        
+        // 运输工具系统
+        this.transportation = {
+            current: 'manual', // 当前使用的运输工具
+            vehicles: {
+                manual: {
+                    name: '人工',
+                    speed: 1,
+                    capacity: 5,
+                    unlocked: true,
+                    purchased: true,
+                    level: 1,
+                    maxLevel: 3
+                },
+                cart: {
+                    name: '推车',
+                    speed: 2,
+                    capacity: 15,
+                    unlocked: false,
+                    purchased: false,
+                    level: 0,
+                    maxLevel: 3
+                },
+                tractor: {
+                    name: '拖拉机',
+                    speed: 4,
+                    capacity: 30,
+                    unlocked: false,
+                    purchased: false,
+                    level: 0,
+                    maxLevel: 3
+                },
+                truck: {
+                    name: '货车',
+                    speed: 6,
+                    capacity: 50,
+                    unlocked: false,
+                    purchased: false,
+                    level: 0,
+                    maxLevel: 3
+                },
+                train: {
+                    name: '火车',
+                    speed: 10,
+                    capacity: 100,
+                    unlocked: false,
+                    purchased: false,
+                    level: 0,
+                    maxLevel: 3
+                }
+            }
+        };
+        
+        // 建筑预览
+        this.previewMesh = null;
         
         // 初始化游戏设置
         this.settings = this.loadSettings();
@@ -67,15 +245,51 @@ class Game {
         this.initTerrain();
         this.initResourceNodes();
         this.initEventListeners();
+        this.initMessageWindow();
         this.updateGoalDisplay();
         this.updateColonyStatusDisplay();
         
-        // 模拟加载过程
-        setTimeout(() => {
+        // 预加载资源并初始化游戏
+        this.preloadResources();
+    }
+    
+    async preloadResources() {
+        try {
+            // 预加载常用资源
+            await resourceLoader.preloadCommonResources();
+            
+            // 初始化资源节点
+            await this.initResourceNodes();
+            
+            // 隐藏加载屏幕并显示游戏
             this.hideLoadScreen();
             this.showStoryModal();
             this.animate();
-        }, 2000);
+        } catch (error) {
+            console.error('Error preloading resources:', error);
+            // 即使加载失败也继续游戏，使用fallback几何体
+            this.hideLoadScreen();
+            this.showStoryModal();
+            this.animate();
+        }
+    }
+
+    async initAudio() {
+        await this.audioManager.init();
+        this.audioManager.setVolume(this.settings.sound / 100);
+        
+        // 加载基础音效
+        const sounds = [
+            { name: 'collect', url: 'assets/audio/collect.mp3' },
+            { name: 'build', url: 'assets/audio/build.mp3' },
+            { name: 'upgrade', url: 'assets/audio/upgrade.mp3' },
+            { name: 'notification', url: 'assets/audio/notification.mp3' },
+            { name: 'success', url: 'assets/audio/success.mp3' }
+        ];
+        
+        for (const sound of sounds) {
+            await this.audioManager.loadAudio(sound.name, sound.url);
+        }
     }
 
     initCamera() {
@@ -84,11 +298,27 @@ class Game {
     }
 
     initLighting() {
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // 使用更高效的环境光设置
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // 降低环境光强度
         this.scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        // 优化方向光
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6); // 降低方向光强度
         directionalLight.position.set(50, 100, 50);
+        
+        // 优化阴影设置，减少阴影计算开销
+        if (this.settings.shadows) {
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 512; // 减少阴影贴图大小
+            directionalLight.shadow.mapSize.height = 512;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 200;
+            directionalLight.shadow.camera.left = -100;
+            directionalLight.shadow.camera.right = 100;
+            directionalLight.shadow.camera.top = 100;
+            directionalLight.shadow.camera.bottom = -100;
+        }
+        
         this.scene.add(directionalLight);
     }
 
@@ -117,132 +347,127 @@ class Game {
         this.scene.add(terrain);
     }
 
-    initResourceNodes() {
+    async initResourceNodes() {
+        // 初始化实例化网格
+        this.initInstancedMeshes();
+        
         for (let i = 0; i < 10; i++) {
             const x = Math.random() * 180 - 90;
             const z = Math.random() * 180 - 90;
-            this.createTree(x, z);
+            await this.createTree(x, z);
         }
 
         for (let i = 0; i < 8; i++) {
             const x = Math.random() * 180 - 90;
             const z = Math.random() * 180 - 90;
-            this.createStone(x, z);
+            await this.createStone(x, z);
         }
 
         for (let i = 0; i < 6; i++) {
             const x = Math.random() * 180 - 90;
             const z = Math.random() * 180 - 90;
-            this.createIronOre(x, z);
+            await this.createIronOre(x, z);
         }
 
         for (let i = 0; i < 7; i++) {
             const x = Math.random() * 180 - 90;
             const z = Math.random() * 180 - 90;
-            this.createCoal(x, z);
+            await this.createCoal(x, z);
         }
 
         for (let i = 0; i < 5; i++) {
             const x = Math.random() * 180 - 90;
             const z = Math.random() * 180 - 90;
-            this.createOil(x, z);
+            await this.createOil(x, z);
         }
     }
+    
+    initInstancedMeshes() {
+        // 不再使用实例化网格，改为使用GameObjectManager
+        // 此方法保留以保持兼容性
+    }
+    
+    initResourcePool() {
+        // 不再使用对象池，改为使用GameObjectManager
+        // 此方法保留以保持兼容性
+    }
 
-    createTree(x, z) {
-        const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, 10, 8);
-        const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.set(x, 5, z);
-
-        const leavesGeometry = new THREE.SphereGeometry(5, 8, 8);
-        const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-        leaves.position.set(x, 15, z);
-
-        this.scene.add(trunk);
-        this.scene.add(leaves);
+    async createTree(x, z) {
+        // 使用GameObjectManager创建点表示的树木
+        const position = new THREE.Vector3(x, 0, z);
+        const treeObject = await this.objectManager.createObject('tree', position, {
+            amount: 10
+        });
 
         this.resourcesNodes.push({
             type: 'tree',
-            position: new THREE.Vector3(x, 0, z),
-            mesh: [trunk, leaves],
+            position: position,
+            mesh: [treeObject.mesh],
+            objectId: treeObject.id,
             amount: 10
         });
     }
 
-    createStone(x, z) {
-        const geometry = new THREE.BoxGeometry(3, 3, 3);
-        const material = new THREE.MeshStandardMaterial({ color: 0x808080 });
-        const stone = new THREE.Mesh(geometry, material);
-        stone.position.set(x, 1.5, z);
-
-        this.scene.add(stone);
+    async createStone(x, z) {
+        // 使用GameObjectManager创建点表示的石头
+        const position = new THREE.Vector3(x, 0, z);
+        const stoneObject = await this.objectManager.createObject('stone', position, {
+            amount: 8
+        });
 
         this.resourcesNodes.push({
             type: 'stone',
-            position: new THREE.Vector3(x, 0, z),
-            mesh: [stone],
+            position: position,
+            mesh: [stoneObject.mesh],
+            objectId: stoneObject.id,
             amount: 8
         });
     }
 
-    createIronOre(x, z) {
-        const geometry = new THREE.BoxGeometry(3, 2, 3);
-        const material = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.7, roughness: 0.3 });
-        const ironOre = new THREE.Mesh(geometry, material);
-        ironOre.position.set(x, 1, z);
-
-        this.scene.add(ironOre);
+    async createIronOre(x, z) {
+        // 使用GameObjectManager创建点表示的铁矿
+        const position = new THREE.Vector3(x, 0, z);
+        const ironObject = await this.objectManager.createObject('iron', position, {
+            amount: 6
+        });
 
         this.resourcesNodes.push({
             type: 'iron',
-            position: new THREE.Vector3(x, 0, z),
-            mesh: [ironOre],
+            position: position,
+            mesh: [ironObject.mesh],
+            objectId: ironObject.id,
             amount: 6
         });
     }
 
-    createCoal(x, z) {
-        const geometry = new THREE.BoxGeometry(2.5, 2.5, 2.5);
-        const material = new THREE.MeshStandardMaterial({ color: 0x333333 });
-        const coal = new THREE.Mesh(geometry, material);
-        coal.position.set(x, 1.25, z);
-
-        this.scene.add(coal);
+    async createCoal(x, z) {
+        // 使用GameObjectManager创建点表示的煤炭
+        const position = new THREE.Vector3(x, 0, z);
+        const coalObject = await this.objectManager.createObject('coal', position, {
+            amount: 7
+        });
 
         this.resourcesNodes.push({
             type: 'coal',
-            position: new THREE.Vector3(x, 0, z),
-            mesh: [coal],
+            position: position,
+            mesh: [coalObject.mesh],
+            objectId: coalObject.id,
             amount: 7
         });
     }
 
-    createOil(x, z) {
-        const baseGeometry = new THREE.CylinderGeometry(2, 2, 1, 8);
-        const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
-        const base = new THREE.Mesh(baseGeometry, baseMaterial);
-        base.position.set(x, 0.5, z);
-
-        const pumpGeometry = new THREE.CylinderGeometry(0.5, 0.5, 3, 8);
-        const pumpMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
-        const pump = new THREE.Mesh(pumpGeometry, pumpMaterial);
-        pump.position.set(x, 2, z);
-
-        const oilGeometry = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 8);
-        const oilMaterial = new THREE.MeshStandardMaterial({ color: 0x111111 });
-        const oil = new THREE.Mesh(oilGeometry, oilMaterial);
-        oil.position.set(x, 1.25, z);
-
-        this.scene.add(base);
-        this.scene.add(pump);
-        this.scene.add(oil);
+    async createOil(x, z) {
+        // 使用GameObjectManager创建点表示的石油
+        const position = new THREE.Vector3(x, 0, z);
+        const oilObject = await this.objectManager.createObject('oil', position, {
+            amount: 5
+        });
 
         this.resourcesNodes.push({
             type: 'oil',
-            position: new THREE.Vector3(x, 0, z),
-            mesh: [base, pump, oil],
+            position: position,
+            mesh: [oilObject.mesh],
+            objectId: oilObject.id,
             amount: 5
         });
     }
@@ -256,6 +481,10 @@ class Game {
 
         document.addEventListener('click', (event) => {
             this.handleClick(event);
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            this.updatePreview(event);
         });
 
         document.querySelectorAll('.build-item').forEach(item => {
@@ -273,77 +502,6 @@ class Game {
             });
         });
         
-        // 资源交易系统事件监听器
-        const inputResource = document.getElementById('input-resource');
-        const outputResource = document.getElementById('output-resource');
-        const inputAmount = document.getElementById('input-amount');
-        const outputAmount = document.getElementById('output-amount');
-        const tradeRateInfo = document.getElementById('trade-rate-info');
-        const tradeBtn = document.getElementById('trade-btn');
-        const convertBtn = document.getElementById('convert-btn');
-        
-        const updateTradeOutput = () => {
-            const inputRes = inputResource.value;
-            const outputRes = outputResource.value;
-            const amount = parseInt(inputAmount.value) || 0;
-            
-            if (inputRes === outputRes) {
-                outputAmount.textContent = amount;
-                tradeRateInfo.textContent = '转换比例: 1:1';
-            } else {
-                // 交易比率：不同资源之间的转换比例
-                const tradeRate = this.getTradeRate(inputRes, outputRes);
-                outputAmount.textContent = Math.floor(amount * tradeRate);
-                tradeRateInfo.textContent = `转换比例: 1:${tradeRate.toFixed(2)}`;
-            }
-        };
-        
-        inputResource.addEventListener('change', updateTradeOutput);
-        outputResource.addEventListener('change', updateTradeOutput);
-        inputAmount.addEventListener('input', updateTradeOutput);
-        
-        tradeBtn.addEventListener('click', () => {
-            const inputRes = inputResource.value;
-            const outputRes = outputResource.value;
-            const inputAmt = parseInt(inputAmount.value) || 0;
-            const outputAmt = parseInt(outputAmount.textContent) || 0;
-            
-            if (inputRes !== outputRes && inputAmt > 0) {
-                // 检查是否有足够的输入资源
-                if (this.resources[inputRes] >= inputAmt) {
-                    // 检查输出资源是否有足够的存储容量
-                    if (this.resources[outputRes] + outputAmt <= this.resourceCapacity[outputRes]) {
-                        // 执行交易
-                        this.resources[inputRes] -= inputAmt;
-                        this.resources[outputRes] += outputAmt;
-                        this.updateResourceDisplay();
-                        this.showNotification(`成功交易: ${inputAmt} ${this.getResourceName(inputRes)} → ${outputAmt} ${this.getResourceName(outputRes)}`);
-                    } else {
-                        alert('输出资源存储容量不足！');
-                    }
-                } else {
-                    alert('输入资源不足！');
-                }
-            }
-        });
-        
-        convertBtn.addEventListener('click', () => {
-            const inputRes = inputResource.value;
-            const outputRes = outputResource.value;
-            const inputAmt = parseInt(inputAmount.value) || 0;
-            
-            if (inputRes !== outputRes && inputAmt > 0) {
-                const success = this.convertResources(inputRes, outputRes, inputAmt);
-                if (success) {
-                    const outputAmt = Math.floor(inputAmt * this.getTradeRate(inputRes, outputRes));
-                    this.showNotification(`成功转换: ${inputAmt + Math.floor(inputAmt * 0.1)} ${this.getResourceName(inputRes)} → ${outputAmt} ${this.getResourceName(outputRes)}`);
-                }
-            }
-        });
-        
-        // 初始化交易输出显示
-        updateTradeOutput();
-        
         // 添加设置按钮点击事件
         const settingsBtn = document.getElementById('settings-btn');
         if (settingsBtn) {
@@ -352,6 +510,57 @@ class Game {
                 this.showSettingsMenu();
             });
         }
+        
+        // 添加商店按钮点击事件
+        const shopBtn = document.getElementById('shop-btn');
+        if (shopBtn) {
+            shopBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.showShop();
+            });
+        }
+        
+        // 添加科技树按钮点击事件
+        const techBtn = document.getElementById('tech-btn');
+        if (techBtn) {
+            techBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.showTechTree();
+            });
+        }
+        
+        // 点击其他地方隐藏商店面板和科技树面板
+        document.addEventListener('click', (event) => {
+            const shopPanel = document.getElementById('shop-panel');
+            const shopBtn = document.getElementById('shop-btn');
+            const techPanel = document.getElementById('tech-panel');
+            const techBtn = document.getElementById('tech-btn');
+            
+            if (shopPanel && shopPanel.style.display === 'block') {
+                if (!shopPanel.contains(event.target) && event.target !== shopBtn) {
+                    this.hideShop();
+                }
+            }
+            
+            if (techPanel && techPanel.style.display === 'block') {
+                if (!techPanel.contains(event.target) && event.target !== techBtn) {
+                    this.hideTechTree();
+                }
+            }
+        });
+        
+        // 添加键盘事件监听器
+        window.addEventListener('keydown', (event) => {
+            if (this.keys.hasOwnProperty(event.key.toLowerCase())) {
+                this.keys[event.key.toLowerCase()] = true;
+            }
+        });
+        
+        window.addEventListener('keyup', (event) => {
+            if (this.keys.hasOwnProperty(event.key.toLowerCase())) {
+                this.keys[event.key.toLowerCase()] = false;
+            }
+        });
     }
 
     loadSettings() {
@@ -496,6 +705,172 @@ class Game {
             modal.remove();
         }
     }
+    
+    showTechTree() {
+        this.hideShop();
+        const techPanel = document.getElementById('tech-panel');
+        if (techPanel) {
+            techPanel.style.display = 'block';
+            this.updateTechTreeDisplay();
+        }
+    }
+    
+    hideTechTree() {
+        const techPanel = document.getElementById('tech-panel');
+        if (techPanel) {
+            techPanel.style.display = 'none';
+        }
+    }
+    
+    updateTechTreeDisplay() {
+        const techContent = document.getElementById('tech-tree-content');
+        if (!techContent) return;
+        
+        techContent.innerHTML = '';
+        
+        const allTechs = this.techTree.getAllTechInfo();
+        
+        for (const [techId, techInfo] of Object.entries(allTechs)) {
+            const techElement = document.createElement('div');
+            techElement.className = 'tech-item';
+            techElement.style.marginBottom = '15px';
+            techElement.style.padding = '10px';
+            techElement.style.border = '1px solid #444';
+            techElement.style.borderRadius = '5px';
+            
+            if (techInfo.researched) {
+                techElement.style.backgroundColor = 'rgba(0, 128, 0, 0.2)';
+                techElement.style.borderColor = '#00ff00';
+            } else if (techInfo.unlocked) {
+                techElement.style.backgroundColor = 'rgba(0, 128, 255, 0.2)';
+                techElement.style.borderColor = '#0099ff';
+            } else {
+                techElement.style.backgroundColor = 'rgba(64, 64, 64, 0.2)';
+                techElement.style.borderColor = '#666';
+            }
+            
+            techElement.innerHTML = `
+                <h4 style="margin: 0 0 5px 0; color: ${techInfo.researched ? '#00ff00' : techInfo.unlocked ? '#0099ff' : '#ccc'}">${techInfo.name}</h4>
+                <p style="margin: 0 0 10px 0; font-size: 12px; color: #aaa">${techInfo.description}</p>
+                <div style="font-size: 12px; margin-bottom: 10px">
+                    <strong>研究成本:</strong><br>
+                    ${Object.entries(techInfo.cost).map(([resource, amount]) => 
+                        `${this.getResourceName(resource)}: ${amount}`
+                    ).join('<br>')}
+                </div>
+                ${!techInfo.researched && techInfo.unlocked ? `
+                    <button class="research-btn" data-tech="${techId}" style="width: 100%; padding: 5px; background: #0066cc; color: #fff; border: none; border-radius: 3px; cursor: pointer;">研究</button>
+                ` : techInfo.researched ? 
+                    '<span style="color: #00ff00; font-size: 12px;">已研究</span>' : 
+                    `<div style="color: #666; font-size: 12px;">解锁进度: ${techInfo.percentage}%</div>`
+                }
+            `;
+            
+            techContent.appendChild(techElement);
+        }
+        
+        // 添加研究按钮点击事件
+        document.querySelectorAll('.research-btn').forEach(btn => {
+            btn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const techId = btn.dataset.tech;
+                this.techTree.researchTech(techId);
+                this.updateTechTreeDisplay();
+                this.updateResourceDisplay();
+            });
+        });
+    }
+    
+    showShop() {
+        const shopPanel = document.getElementById('shop-panel');
+        if (shopPanel) {
+            shopPanel.style.display = 'block';
+            this.updateShopDisplay();
+        }
+    }
+    
+    hideShop() {
+        const shopPanel = document.getElementById('shop-panel');
+        if (shopPanel) {
+            shopPanel.style.display = 'none';
+        }
+    }
+    
+    updateShopDisplay() {
+        const shopPanel = document.getElementById('transportation-shop');
+        if (!shopPanel) return;
+        
+        shopPanel.innerHTML = '<h4>运输工具</h4>';
+        
+        Object.entries(this.transportation.vehicles).forEach(([type, vehicle]) => {
+            const vehicleItem = document.createElement('div');
+            vehicleItem.className = 'vehicle-item';
+            vehicleItem.dataset.type = type;
+            vehicleItem.style.marginBottom = '15px';
+            vehicleItem.style.padding = '10px';
+            vehicleItem.style.backgroundColor = 'rgba(30, 30, 40, 0.8)';
+            vehicleItem.style.borderRadius = '3px';
+            vehicleItem.style.border = '1px solid #555';
+            
+            let status = vehicle.unlocked ? '已解锁' : '未解锁';
+            if (vehicle.purchased) status = '已购买';
+            
+            let buttons = '';
+            if (vehicle.unlocked) {
+                if (!vehicle.purchased) {
+                    const cost = this.getVehicleCost(type);
+                    buttons = `<button class="purchase-vehicle-btn" data-type="${type}" style="margin-top: 10px; padding: 5px 10px; background-color: #0066cc; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">购买 (${this.formatCost(cost)})</button>`;
+                } else {
+                    buttons = `
+                        <button class="select-vehicle-btn" data-type="${type}" style="margin-top: 10px; padding: 5px 10px; background-color: ${this.transportation.current === type ? '#0099ff' : '#333'}; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; margin-right: 5px;">${this.transportation.current === type ? '当前使用' : '使用'}</button>
+                    `;
+                    if (vehicle.level < vehicle.maxLevel) {
+                        const upgradeCost = this.getVehicleUpgradeCost(type, vehicle.level);
+                        buttons += `<button class="upgrade-vehicle-btn" data-type="${type}" style="margin-top: 10px; padding: 5px 10px; background-color: #663300; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">升级 (${this.formatCost(upgradeCost)})</button>`;
+                    }
+                }
+            }
+            
+            vehicleItem.innerHTML = `
+                <div style="font-weight: bold; color: #00ffff;">${vehicle.name} (${status})</div>
+                <div style="font-size: 12px; margin: 5px 0;">速度: ${vehicle.speed.toFixed(1)}</div>
+                <div style="font-size: 12px; margin: 5px 0;">载重: ${Math.floor(vehicle.capacity)}</div>
+                <div style="font-size: 12px; margin: 5px 0;">等级: ${vehicle.level}/${vehicle.maxLevel}</div>
+                ${buttons}
+            `;
+            
+            shopPanel.appendChild(vehicleItem);
+        });
+        
+        // 添加事件监听器
+        this.addShopEventListeners();
+    }
+    
+    addShopEventListeners() {
+        // 购买按钮事件
+        document.querySelectorAll('.purchase-vehicle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.purchaseVehicle(btn.dataset.type);
+            });
+        });
+        
+        // 升级按钮事件
+        document.querySelectorAll('.upgrade-vehicle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.upgradeVehicle(btn.dataset.type);
+            });
+        });
+        
+        // 选择按钮事件
+        document.querySelectorAll('.select-vehicle-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.selectVehicle(btn.dataset.type);
+            });
+        });
+    }
 
     applySettings() {
         // 应用图形设置
@@ -613,8 +988,148 @@ class Game {
         const newProsperity = Math.min(100, 25 + buildingCount * 3);
         this.colonyStatus.prosperity = newProsperity;
         
+        // 检查运输工具解锁
+        this.checkTransportationUnlock();
+        
         // 更新显示
         this.updateColonyStatusDisplay();
+    }
+    
+    checkTransportationUnlock() {
+        const level = this.colonyStatus.level;
+        
+        if (level >= 2 && !this.transportation.vehicles.cart.unlocked) {
+            this.transportation.vehicles.cart.unlocked = true;
+            this.showNotification('解锁了新的运输工具: 推车');
+        }
+        
+        if (level >= 3 && !this.transportation.vehicles.tractor.unlocked) {
+            this.transportation.vehicles.tractor.unlocked = true;
+            this.showNotification('解锁了新的运输工具: 拖拉机');
+        }
+        
+        if (level >= 4 && !this.transportation.vehicles.truck.unlocked) {
+            this.transportation.vehicles.truck.unlocked = true;
+            this.showNotification('解锁了新的运输工具: 货车');
+        }
+        
+        if (level >= 5 && !this.transportation.vehicles.train.unlocked) {
+            this.transportation.vehicles.train.unlocked = true;
+            this.showNotification('解锁了新的运输工具: 火车');
+        }
+    }
+    
+    getVehicleCost(type) {
+        const costs = {
+            cart: { wood: 100, stone: 50 },
+            tractor: { wood: 300, stone: 200, steel: 50 },
+            truck: { wood: 500, stone: 400, steel: 200 },
+            train: { wood: 1000, stone: 800, steel: 500, oil: 200 }
+        };
+        return costs[type] || {};
+    }
+    
+    getVehicleUpgradeCost(type, level) {
+        const baseCosts = {
+            manual: { food: 10 },
+            cart: { wood: 50, stone: 25 },
+            tractor: { wood: 150, stone: 100, steel: 25 },
+            truck: { wood: 250, stone: 200, steel: 100 },
+            train: { wood: 500, stone: 400, steel: 250, oil: 100 }
+        };
+        
+        const baseCost = baseCosts[type] || {};
+        const costMultiplier = Math.pow(1.5, level - 1);
+        const cost = {};
+        
+        for (const [resource, amount] of Object.entries(baseCost)) {
+            cost[resource] = Math.floor(amount * costMultiplier);
+        }
+        
+        return cost;
+    }
+    
+    getVehicleMaintenanceCost(type) {
+        const maintenanceCosts = {
+            manual: { food: 1 },
+            cart: { wood: 1, stone: 1 },
+            tractor: { wood: 2, stone: 2, steel: 1 },
+            truck: { wood: 3, stone: 3, steel: 2 },
+            train: { wood: 5, stone: 5, steel: 3, oil: 2 }
+        };
+        return maintenanceCosts[type] || {};
+    }
+    
+    purchaseVehicle(type) {
+        const vehicle = this.transportation.vehicles[type];
+        const cost = this.getVehicleCost(type);
+        
+        if (!vehicle.unlocked) {
+            this.showNotification('该运输工具尚未解锁');
+            return;
+        }
+        
+        if (vehicle.purchased) {
+            this.showNotification('该运输工具已购买');
+            return;
+        }
+        
+        if (this.canAfford(cost)) {
+            this.payCost(cost);
+            vehicle.purchased = true;
+            vehicle.level = 1;
+            this.showNotification(`成功购买 ${vehicle.name}`);
+            this.updateShopDisplay();
+        } else {
+            this.showNotification('资源不足，无法购买');
+        }
+    }
+    
+    upgradeVehicle(type) {
+        const vehicle = this.transportation.vehicles[type];
+        
+        if (!vehicle.purchased) {
+            this.showNotification('请先购买该运输工具');
+            return;
+        }
+        
+        if (vehicle.level >= vehicle.maxLevel) {
+            this.showNotification('该运输工具已达到最高等级');
+            return;
+        }
+        
+        const upgradeCost = this.getVehicleUpgradeCost(type, vehicle.level);
+        if (this.canAfford(upgradeCost)) {
+            this.payCost(upgradeCost);
+            vehicle.level += 1;
+            vehicle.speed *= 1.2; // 每级提升20%速度
+            vehicle.capacity *= 1.3; // 每级提升30%载重
+            this.showNotification(`成功升级 ${vehicle.name} 到等级 ${vehicle.level}`);
+            this.updateShopDisplay();
+        } else {
+            this.showNotification('资源不足，无法升级');
+        }
+    }
+    
+    selectVehicle(type) {
+        const vehicle = this.transportation.vehicles[type];
+        
+        if (!vehicle.purchased) {
+            this.showNotification('请先购买该运输工具');
+            return;
+        }
+        
+        this.transportation.current = type;
+        this.showNotification(`已切换到 ${vehicle.name}`);
+        this.updateShopDisplay();
+    }
+    
+    formatCost(cost) {
+        let costString = '';
+        for (const [resource, amount] of Object.entries(cost)) {
+            costString += `${amount} ${this.getResourceName(resource)} `;
+        }
+        return costString.trim();
     }
 
     saveGame() {
@@ -623,7 +1138,8 @@ class Game {
             buildings: this.buildings,
             gameGoals: this.gameGoals,
             currentGoalIndex: this.currentGoalIndex,
-            gameStartedTime: this.gameStartedTime
+            gameStartedTime: this.gameStartedTime,
+            transportation: this.transportation
         };
         
         try {
@@ -647,6 +1163,9 @@ class Game {
                 this.gameGoals = gameData.gameGoals;
                 this.currentGoalIndex = gameData.currentGoalIndex;
                 this.gameStartedTime = gameData.gameStartedTime;
+                if (gameData.transportation) {
+                    this.transportation = gameData.transportation;
+                }
                 
                 // 重新创建建筑模型
                 for (const building of this.buildings) {
@@ -702,47 +1221,62 @@ class Game {
         }, 3000);
     }
     
-    getTradeRate(inputRes, outputRes) {
-        // 定义不同资源之间的交易比率
-        // 高级资源的转换比例不同，保持游戏平衡性
-        const rates = {
-            wood: { stone: 0.8, food: 0.9, steel: 0.5, iron: 0.6, coal: 0.7, oil: 0.6 },
-            stone: { wood: 0.8, food: 0.9, steel: 0.5, iron: 0.6, coal: 0.7, oil: 0.6 },
-            food: { wood: 0.8, stone: 0.8, steel: 0.4, iron: 0.5, coal: 0.6, oil: 0.5 },
-            steel: { wood: 1.5, stone: 1.5, food: 2.0, iron: 1.2, coal: 1.2, oil: 1.3 },
-            iron: { wood: 1.0, stone: 1.0, food: 1.1, steel: 0.7, coal: 0.9, oil: 0.8 },
-            coal: { wood: 1.0, stone: 1.0, food: 1.1, steel: 0.7, iron: 0.9, oil: 0.8 },
-            oil: { wood: 1.1, stone: 1.1, food: 1.2, steel: 0.8, iron: 1.0, coal: 1.0 }
-        };
+    showModal(title, message, onClose) {
+        const modal = document.createElement('div');
+        modal.className = 'custom-modal';
+        modal.id = 'custom-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.background = 'rgba(0, 0, 0, 0.7)';
+        modal.style.display = 'flex';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.zIndex = '5000';
         
-        return rates[inputRes][outputRes] || 1;
+        const content = document.createElement('div');
+        content.style.background = 'rgba(20, 20, 30, 0.95)';
+        content.style.color = '#fff';
+        content.style.padding = '20px';
+        content.style.borderRadius = '10px';
+        content.style.border = '1px solid #00ffff';
+        content.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.5)';
+        content.style.minWidth = '300px';
+        content.style.textAlign = 'center';
+        
+        content.innerHTML = `
+            <h2 style="color: #00ffff; margin-bottom: 15px;">${title}</h2>
+            <p style="margin-bottom: 20px;">${message}</p>
+            <button id="modal-close-btn" style="padding: 8px 15px; background: #0066cc; color: #fff; border: none; border-radius: 3px; cursor: pointer;">确定</button>
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        const closeBtn = document.getElementById('modal-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                modal.remove();
+                if (onClose) {
+                    onClose();
+                }
+            });
+        }
+        
+        // 点击模态框外部关闭
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                modal.remove();
+                if (onClose) {
+                    onClose();
+                }
+            }
+        });
     }
     
-    convertResources(inputRes, outputRes, amount) {
-        // 资源转换功能，包含消耗机制
-        const baseRate = this.getTradeRate(inputRes, outputRes);
-        const conversionCost = Math.floor(amount * 0.1); // 10% 的转换损耗
-        const actualInput = amount + conversionCost;
-        
-        // 检查是否有足够的输入资源
-        if (this.resources[inputRes] >= actualInput) {
-            // 检查输出资源是否有足够的存储容量
-            const outputAmount = Math.floor(amount * baseRate);
-            if (this.resources[outputRes] + outputAmount <= this.resourceCapacity[outputRes]) {
-                // 执行转换
-                this.resources[inputRes] -= actualInput;
-                this.resources[outputRes] += outputAmount;
-                this.updateResourceDisplay();
-                return true;
-            } else {
-                alert('输出资源存储容量不足！');
-                return false;
-            }
-        } else {
-            alert(`输入资源不足！需要 ${actualInput} ${this.getResourceName(inputRes)}`);
-            return false;
-        }
-    }
+
 
     showTooltip(event, buildType) {
         const tooltip = document.createElement('div');
@@ -816,7 +1350,7 @@ class Game {
         }
     }
 
-    handleClick(event) {
+    async handleClick(event) {
         if (this.selectedBuildType) {
             const mouse = new THREE.Vector2();
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -828,7 +1362,12 @@ class Game {
             const intersects = raycaster.intersectObjects(this.scene.children);
             if (intersects.length > 0) {
                 const hitPoint = intersects[0].point;
-                this.buildStructure(this.selectedBuildType, hitPoint);
+                await this.buildStructure(this.selectedBuildType, hitPoint);
+            } else {
+                // 点击空白处，取消选择
+                this.selectedBuildType = null;
+                this.clearPreviewMesh();
+                this.updateBuildMenu();
             }
         } else {
             if (!this.checkBuildingClick(event)) {
@@ -949,21 +1488,22 @@ class Game {
 
     createParticleSystem(position, color) {
         const particlesGeometry = new THREE.BufferGeometry();
-        const particlesCount = 20;
+        const particlesCount = 30; // 增加粒子数量
 
         const posArray = new Float32Array(particlesCount * 3);
         for (let i = 0; i < particlesCount * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 2;
+            posArray[i] = (Math.random() - 0.5) * 3; // 增加粒子扩散范围
         }
 
         particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
 
         const particlesMaterial = new THREE.PointsMaterial({
-            size: 0.5,
+            size: 0.8, // 增加粒子大小
             color: color,
             transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending,
+            sizeAttenuation: true // 启用大小衰减，使粒子更有层次感
         });
 
         const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
@@ -974,10 +1514,15 @@ class Game {
         this.particleSystems.push({
             system: particleSystem,
             age: 0,
-            maxAge: 1000
+            maxAge: 1200 // 增加粒子系统持续时间
         });
 
         return particleSystem;
+    }
+    
+    playSound(type) {
+        // 使用音频管理器播放音效
+        this.audioManager.playSound(type, this.settings.sound / 100);
     }
 
     animateResourceNode(node) {
@@ -990,7 +1535,11 @@ class Game {
                 node.originalScale.push(mesh.scale.clone());
             }
             
-            this.animatingNodes.push(node);
+            // 确保节点只被添加一次到动画数组
+            const existingIndex = this.animatingNodes.findIndex(n => n === node);
+            if (existingIndex === -1) {
+                this.animatingNodes.push(node);
+            }
         }
     }
 
@@ -1003,7 +1552,22 @@ class Game {
             particleSystem.age += 16; // Assume 60 FPS
             
             if (particleSystem.age > particleSystem.maxAge) {
+                // 从场景中移除粒子系统
                 this.scene.remove(particleSystem.system);
+                
+                // 清理几何体和材质，避免内存泄漏
+                if (particleSystem.system.geometry) {
+                    particleSystem.system.geometry.dispose();
+                }
+                if (particleSystem.system.material) {
+                    if (Array.isArray(particleSystem.system.material)) {
+                        particleSystem.system.material.forEach(material => material.dispose());
+                    } else {
+                        particleSystem.system.material.dispose();
+                    }
+                }
+                
+                // 从数组中删除
                 this.particleSystems.splice(i, 1);
             } else {
                 // Animate particles
@@ -1046,6 +1610,35 @@ class Game {
                 }
             }
         }
+        
+        // 为建筑添加动画效果
+        for (const building of this.buildings) {
+            if (building.mesh) {
+                // 添加轻微的缩放动画
+                const time = Date.now() * 0.001;
+                const scale = 1 + Math.sin(time + building.position.x + building.position.z) * 0.01;
+                building.mesh.scale.set(scale, scale, scale);
+            }
+        }
+        
+        // 为资源节点添加动画效果
+        for (const node of this.resourcesNodes) {
+            if (node.type === 'tree' && node.mesh) {
+                // 为树木添加摇摆效果
+                const time = Date.now() * 0.001;
+                const swayAmount = 0.05;
+                
+                // 树干摇摆
+                if (node.mesh[0]) {
+                    node.mesh[0].rotation.z = Math.sin(time + node.position.x) * swayAmount;
+                }
+                
+                // 树叶摇摆
+                if (node.mesh[1]) {
+                    node.mesh[1].rotation.z = Math.sin(time + node.position.x + 1) * swayAmount * 1.5;
+                }
+            }
+        }
     }
 
     collectResource(node, index) {
@@ -1080,52 +1673,62 @@ class Game {
             if (this.resources[resourceType] < this.resourceCapacity[resourceType]) {
                 this.resources[resourceType] += 1;
                 
-                // Create particle effect
-                this.createParticleSystem(node.position, particleColor);
-                
                 // Animate resource node
                 this.animateResourceNode(node);
                 
-                // Show resource gain text
-                this.showResourceGainText(node.position, resourceType, 1);
+                // Play sound effect
+                this.playSound('collect');
             }
         }
 
         node.amount -= 1;
         if (node.amount <= 0) {
-            for (const mesh of node.mesh) {
-                this.scene.remove(mesh);
+            // 从GameObjectManager中移除对象
+            if (node.objectId) {
+                this.objectManager.removeObject(node.objectId);
             }
+            
+            // 从动画数组中移除节点
+            const animatingIndex = this.animatingNodes.findIndex(n => n === node);
+            if (animatingIndex !== -1) {
+                this.animatingNodes.splice(animatingIndex, 1);
+            }
+            
             this.resourcesNodes.splice(index, 1);
         }
 
         this.updateResourceDisplay();
     }
 
-    buildStructure(type, position) {
+    async buildStructure(type, position) {
         let cost = {};
         let model;
 
         switch (type) {
             case 'mine':
                 cost = { stone: 10, wood: 5 };
-                model = this.createMineModel(position);
+                model = await this.createMineModel(position);
                 break;
             case 'farm':
                 cost = { wood: 8, stone: 3 };
-                model = this.createFarmModel(position);
+                model = await this.createFarmModel(position);
                 break;
             case 'factory':
                 cost = { wood: 15, stone: 10 };
-                model = this.createFactoryModel(position);
+                model = await this.createFactoryModel(position);
                 break;
             case 'warehouse':
                 cost = { wood: 10, stone: 15, steel: 5 };
-                model = this.createWarehouseModel(position);
+                model = await this.createWarehouseModel(position);
                 break;
         }
 
-        if (this.canAfford(cost)) {
+        // 检查是否所有资源都已解锁
+        const allResourcesUnlocked = Object.keys(cost).every(resource => 
+            this.unlockSystem.isUnlocked(resource)
+        );
+
+        if (allResourcesUnlocked && this.canAfford(cost)) {
             this.payCost(cost);
             const building = {
                 type: type,
@@ -1140,10 +1743,16 @@ class Game {
             }
             
             this.buildings.push(building);
+        this.selectedBuildType = null;
+        this.clearPreviewMesh();
+        this.updateBuildMenu();
+        this.updateResourceDisplay();
+        this.updateColonyStatus();
+        } else if (!allResourcesUnlocked) {
+            this.showNotification('需要解锁所有必要的资源才能建造此建筑！');
             this.selectedBuildType = null;
+            this.clearPreviewMesh();
             this.updateBuildMenu();
-            this.updateResourceDisplay();
-            this.updateColonyStatus();
         }
     }
 
@@ -1159,12 +1768,21 @@ class Game {
 
     upgradeBuilding(building) {
         const upgradeCost = this.getUpgradeCost(building.type, building.level);
-        if (this.canAfford(upgradeCost)) {
+        
+        // 检查是否所有资源都已解锁
+        const allResourcesUnlocked = Object.keys(upgradeCost).every(resource => 
+            this.unlockSystem.isUnlocked(resource)
+        );
+
+        if (allResourcesUnlocked && this.canAfford(upgradeCost)) {
             this.payCost(upgradeCost);
             building.level += 1;
             building.productionRate = this.getBaseProductionRate(building.type) * (1 + (building.level - 1) * 0.5); // 每级提升 50% 效率
             this.updateResourceDisplay();
             return true;
+        } else if (!allResourcesUnlocked) {
+            this.showNotification('需要解锁所有必要的资源才能升级此建筑！');
+            return false;
         }
         return false;
     }
@@ -1202,45 +1820,114 @@ class Game {
         }
     }
 
-    createMineModel(position) {
-        const geometry = new THREE.BoxGeometry(8, 4, 8);
-        const material = new THREE.MeshStandardMaterial({ color: 0x444444 });
-        const mine = new THREE.Mesh(geometry, material);
-        mine.position.set(position.x, 2, position.z);
-        this.scene.add(mine);
-        return mine;
+    async createMineModel(position) {
+        // 使用GameObjectManager创建点表示的矿场
+        const mineObject = await this.objectManager.createObject('mine', position);
+        return mineObject.mesh;
     }
 
-    createFarmModel(position) {
-        const geometry = new THREE.BoxGeometry(8, 2, 8);
-        const material = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-        const farm = new THREE.Mesh(geometry, material);
-        farm.position.set(position.x, 1, position.z);
-        this.scene.add(farm);
-        return farm;
+    async createFarmModel(position) {
+        // 使用GameObjectManager创建点表示的农场
+        const farmObject = await this.objectManager.createObject('farm', position);
+        return farmObject.mesh;
     }
 
-    createFactoryModel(position) {
-        const geometry = new THREE.BoxGeometry(10, 6, 10);
-        const material = new THREE.MeshStandardMaterial({ color: 0x666666 });
-        const factory = new THREE.Mesh(geometry, material);
-        factory.position.set(position.x, 3, position.z);
-        this.scene.add(factory);
-        return factory;
+    async createFactoryModel(position) {
+        // 使用GameObjectManager创建点表示的工厂
+        const factoryObject = await this.objectManager.createObject('factory', position);
+        return factoryObject.mesh;
     }
 
-    createWarehouseModel(position) {
-        const geometry = new THREE.BoxGeometry(12, 8, 12);
-        const material = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-        const warehouse = new THREE.Mesh(geometry, material);
-        warehouse.position.set(position.x, 4, position.z);
-        this.scene.add(warehouse);
-        return warehouse;
+    async createWarehouseModel(position) {
+        // 使用GameObjectManager创建点表示的仓库
+        const warehouseObject = await this.objectManager.createObject('warehouse', position);
+        return warehouseObject.mesh;
     }
 
     selectBuildType(type) {
         this.selectedBuildType = type;
         this.updateBuildMenu();
+        this.createPreviewMesh(type);
+    }
+    
+    createPreviewMesh(type) {
+        // 清理之前的预览网格
+        this.clearPreviewMesh();
+        
+        let geometry;
+        switch (type) {
+            case 'mine':
+                geometry = new THREE.BoxGeometry(8, 4, 8);
+                break;
+            case 'farm':
+                geometry = new THREE.BoxGeometry(8, 2, 8);
+                break;
+            case 'factory':
+                geometry = new THREE.BoxGeometry(10, 6, 10);
+                break;
+            case 'warehouse':
+                geometry = new THREE.BoxGeometry(12, 8, 12);
+                break;
+            default:
+                return;
+        }
+        
+        // 创建半透明的预览材质
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.5,
+            wireframe: true
+        });
+        
+        this.previewMesh = new THREE.Mesh(geometry, material);
+        this.scene.add(this.previewMesh);
+    }
+    
+    clearPreviewMesh() {
+        if (this.previewMesh) {
+            this.scene.remove(this.previewMesh);
+            this.previewMesh.geometry.dispose();
+            this.previewMesh.material.dispose();
+            this.previewMesh = null;
+        }
+    }
+    
+    updatePreview(event) {
+        if (!this.selectedBuildType || !this.previewMesh) return;
+        
+        const mouse = new THREE.Vector2();
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, this.camera);
+        
+        // 创建一个平面来检测鼠标位置
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const intersectionPoint = new THREE.Vector3();
+        
+        if (raycaster.ray.intersectPlane(plane, intersectionPoint)) {
+            // 限制预览位置在地形范围内
+            const x = Math.max(-90, Math.min(90, intersectionPoint.x));
+            const z = Math.max(-90, Math.min(90, intersectionPoint.z));
+            
+            // 调整预览网格的位置
+            switch (this.selectedBuildType) {
+                case 'mine':
+                    this.previewMesh.position.set(x, 2, z);
+                    break;
+                case 'farm':
+                    this.previewMesh.position.set(x, 1, z);
+                    break;
+                case 'factory':
+                    this.previewMesh.position.set(x, 3, z);
+                    break;
+                case 'warehouse':
+                    this.previewMesh.position.set(x, 4, z);
+                    break;
+            }
+        }
     }
 
     updateBuildMenu() {
@@ -1254,22 +1941,24 @@ class Game {
     }
 
     updateResourceDisplay() {
-        document.getElementById('wood-count').textContent = this.resources.wood;
-        document.getElementById('stone-count').textContent = this.resources.stone;
-        document.getElementById('food-count').textContent = this.resources.food;
-        document.getElementById('steel-count').textContent = this.resources.steel;
-        document.getElementById('iron-count').textContent = this.resources.iron;
-        document.getElementById('coal-count').textContent = this.resources.coal;
-        document.getElementById('oil-count').textContent = this.resources.oil;
+        // 只显示已解锁的资源
+        const resources = ['wood', 'stone', 'food', 'iron', 'coal', 'steel', 'oil'];
         
-        // Update capacity display
-        document.getElementById('wood-capacity').textContent = this.resourceCapacity.wood;
-        document.getElementById('stone-capacity').textContent = this.resourceCapacity.stone;
-        document.getElementById('food-capacity').textContent = this.resourceCapacity.food;
-        document.getElementById('steel-capacity').textContent = this.resourceCapacity.steel;
-        document.getElementById('iron-capacity').textContent = this.resourceCapacity.iron;
-        document.getElementById('coal-capacity').textContent = this.resourceCapacity.coal;
-        document.getElementById('oil-capacity').textContent = this.resourceCapacity.oil;
+        resources.forEach(resource => {
+            const countElement = document.getElementById(`${resource}-count`);
+            const capacityElement = document.getElementById(`${resource}-capacity`);
+            const resourceElement = countElement ? countElement.parentElement : null;
+            
+            if (resourceElement) {
+                if (this.unlockSystem.isUnlocked(resource)) {
+                    resourceElement.style.display = 'block';
+                    if (countElement) countElement.textContent = this.resources[resource];
+                    if (capacityElement) capacityElement.textContent = this.resourceCapacity[resource];
+                } else {
+                    resourceElement.style.display = 'none';
+                }
+            }
+        });
     }
 
     updateGoalDisplay() {
@@ -1402,82 +2091,118 @@ class Game {
     }
     
     showNotification(message) {
-        const notification = document.createElement('div');
-        notification.className = 'game-notification';
-        notification.textContent = message;
-        notification.style.position = 'absolute';
-        notification.style.top = '50%';
-        notification.style.left = '50%';
-        notification.style.transform = 'translate(-50%, -50%)';
-        notification.style.backgroundColor = 'rgba(0, 102, 204, 0.9)';
-        notification.style.color = '#fff';
-        notification.style.padding = '15px 25px';
-        notification.style.borderRadius = '5px';
-        notification.style.border = '1px solid #0099ff';
-        notification.style.boxShadow = '0 0 15px rgba(0, 153, 255, 0.7)';
-        notification.style.fontSize = '14px';
-        notification.style.fontWeight = 'bold';
-        notification.style.pointerEvents = 'none';
-        notification.style.zIndex = '2000';
-        notification.style.opacity = '0';
-        notification.style.transition = 'all 0.3s ease';
+        // 添加消息到消息窗口
+        const messageContent = document.getElementById('message-content');
+        if (messageContent) {
+            const messageElement = document.createElement('div');
+            messageElement.style.marginBottom = '8px';
+            messageElement.style.padding = '5px';
+            messageElement.style.backgroundColor = 'rgba(0, 102, 204, 0.3)';
+            messageElement.style.borderRadius = '3px';
+            messageElement.style.borderLeft = '3px solid #0099ff';
+            messageElement.textContent = message;
+            
+            messageContent.appendChild(messageElement);
+            
+            // 滚动到最新消息
+            messageContent.scrollTop = messageContent.scrollHeight;
+            
+            // 限制消息数量，最多保存20条
+            if (messageContent.children.length > 20) {
+                messageContent.removeChild(messageContent.firstChild);
+            }
+        }
+    }
+    
+    initMessageWindow() {
+        // 初始化消息窗口的最小化/最大化功能
+        const toggleBtn = document.getElementById('message-window-toggle');
+        const messageContent = document.getElementById('message-content');
         
-        document.body.appendChild(notification);
-        
-        // Fade in
-        setTimeout(() => {
-            notification.style.opacity = '1';
-        }, 100);
-        
-        // Fade out and remove
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => {
-                notification.remove();
-            }, 300);
-        }, 2000);
+        if (toggleBtn && messageContent) {
+            let isMinimized = false;
+            toggleBtn.addEventListener('click', () => {
+                isMinimized = !isMinimized;
+                if (isMinimized) {
+                    messageContent.style.display = 'none';
+                    toggleBtn.textContent = '▶';
+                } else {
+                    messageContent.style.display = 'block';
+                    toggleBtn.textContent = '▼';
+                }
+            });
+        }
     }
 
     animate() {
         requestAnimationFrame(() => this.animate());
+        this.updateCamera();
+        this.unlockSystem.update();
+        this.techTree.update();
+        this.updateObjectVisibility();
         this.render();
         this.updateBuildings();
         this.updateGoalDisplay();
         this.updateAnimations();
     }
-
-    updateAnimations() {
-        // 为建筑添加动画效果
-        for (const building of this.buildings) {
-            if (building.mesh) {
-                // 添加轻微的缩放动画
-                const time = Date.now() * 0.001;
-                const scale = 1 + Math.sin(time + building.position.x + building.position.z) * 0.01;
-                building.mesh.scale.set(scale, scale, scale);
-            }
-        }
+    
+    updateObjectVisibility() {
+        // 更新对象的可见性，只渲染相机视野内的对象
+        const allObjects = this.objectManager.getAllObjects();
+        const frustum = new THREE.Frustum();
+        const cameraViewProjectionMatrix = new THREE.Matrix4();
         
-        // 为资源节点添加动画效果
-        for (const node of this.resourcesNodes) {
-            if (node.type === 'tree' && node.mesh) {
-                // 为树木添加摇摆效果
-                const time = Date.now() * 0.001;
-                const swayAmount = 0.05;
-                
-                // 树干摇摆
-                if (node.mesh[0]) {
-                    node.mesh[0].rotation.z = Math.sin(time + node.position.x) * swayAmount;
-                }
-                
-                // 树叶摇摆
-                if (node.mesh[1]) {
-                    node.mesh[1].rotation.z = Math.sin(time + node.position.x + 1) * swayAmount * 1.5;
-                }
+        // 更新视锥体
+        this.camera.updateMatrixWorld();
+        cameraViewProjectionMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+        frustum.setFromProjectionMatrix(cameraViewProjectionMatrix);
+        
+        // 检查每个对象是否在视锥体内
+        for (const object of allObjects) {
+            if (object.mesh) {
+                const boundingBox = new THREE.Box3().setFromObject(object.mesh);
+                const isVisible = frustum.intersectsBox(boundingBox);
+                object.mesh.visible = isVisible;
             }
         }
     }
+    
+    updateCamera() {
+        const now = Date.now();
+        
+        // 事件节流，限制相机移动更新频率
+        if (now - this.lastKeyEventTime >= this.keyEventThrottle) {
+            // 根据键盘状态移动相机
+            if (this.keys.w) {
+                this.camera.position.z -= this.cameraSpeed;
+            }
+            if (this.keys.s) {
+                this.camera.position.z += this.cameraSpeed;
+            }
+            if (this.keys.a) {
+                this.camera.position.x -= this.cameraSpeed;
+            }
+            if (this.keys.d) {
+                this.camera.position.x += this.cameraSpeed;
+            }
+            
+            // 限制相机移动边界
+            const boundary = 80;
+            this.camera.position.x = Math.max(-boundary, Math.min(boundary, this.camera.position.x));
+            this.camera.position.z = Math.max(-boundary, Math.min(boundary, this.camera.position.z));
+            
+            // 保持相机看向原点
+            this.camera.lookAt(0, 0, 0);
+            
+            this.lastKeyEventTime = now;
+        }
+    }
+
+
 
     render() {
+        // 优化渲染性能
+        // 只在必要时渲染
         this.renderer.render(this.scene, this.camera);
     }
 
@@ -1504,7 +2229,7 @@ class Game {
             oil: baseCapacity + warehouseCapacityBonus
         };
         
-        // 处理建筑维护成本
+        // 处理建筑维护成本和运输工具维护
         if (!this.lastMaintenanceTime) {
             this.lastMaintenanceTime = now;
         }
@@ -1513,6 +2238,7 @@ class Game {
         if (maintenanceTimeElapsed >= 5) { // 每5秒进行一次维护
             let allBuildingsFunctional = true;
             
+            // 建筑维护
             for (const building of this.buildings) {
                 if (building.type === 'warehouse') continue; // 仓库不需要维护
                 
@@ -1526,6 +2252,18 @@ class Game {
                 }
             }
             
+            // 运输工具维护
+            const currentVehicle = this.transportation.vehicles[this.transportation.current];
+            const maintenanceCost = this.getVehicleMaintenanceCost(this.transportation.current);
+            
+            if (this.canAfford(maintenanceCost)) {
+                this.payCost(maintenanceCost);
+            } else {
+                // 运输工具损坏，降为基础速度
+                currentVehicle.speed = Math.max(1, currentVehicle.speed * 0.5);
+                this.showNotification(`${currentVehicle.name} 因维护不足而性能下降`);
+            }
+            
             this.lastMaintenanceTime = now;
             this.updateResourceDisplay();
         }
@@ -1537,7 +2275,10 @@ class Game {
             const timeElapsed = (now - building.lastProductionTime) / 1000; // 转换为秒
             
             if (timeElapsed >= 1) { // 每秒检查一次
-                const productionAmount = Math.floor(timeElapsed * building.productionRate);
+                // 应用运输工具速度加成到建筑生产
+                const currentVehicle = this.transportation.vehicles[this.transportation.current];
+                const speedMultiplier = currentVehicle.speed / 2; // 基础速度为1时，生产速度不变
+                const productionAmount = Math.floor(timeElapsed * building.productionRate * speedMultiplier);
                 
                 if (productionAmount > 0) {
                     switch (building.type) {

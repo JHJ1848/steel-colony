@@ -1,0 +1,54 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- 火车车头 -->
+  <rect x="10" y="30" width="60" height="15" fill="#666666" />
+  <polygon points="10,30 20,20 80,20 80,30" fill="#555555" />
+  <rect x="60" y="20" width="20" height="10" fill="#777777" />
+  <rect x="65" y="23" width="10" height="4" fill="#444444" />
+  
+  <!-- 火车车厢 -->
+  <rect x="90" y="30" width="100" height="15" fill="#666666" />
+  <rect x="90" y="20" width="100" height="10" fill="#555555" />
+  <rect x="95" y="22" width="90" height="6" fill="#444444" />
+  
+  <!-- 火车车轮 -->
+  <!-- 车头车轮 -->
+  <circle cx="25" cy="45" r="8" fill="#333333" />
+  <circle cx="25" cy="45" r="5" fill="#222222" />
+  <circle cx="25" cy="45" r="2" fill="#555555" />
+  
+  <circle cx="55" cy="45" r="8" fill="#333333" />
+  <circle cx="55" cy="45" r="5" fill="#222222" />
+  <circle cx="55" cy="45" r="2" fill="#555555" />
+  
+  <!-- 车厢车轮 -->
+  <circle cx="115" cy="45" r="8" fill="#333333" />
+  <circle cx="115" cy="45" r="5" fill="#222222" />
+  <circle cx="115" cy="45" r="2" fill="#555555" />
+  
+  <circle cx="145" cy="45" r="8" fill="#333333" />
+  <circle cx="145" cy="45" r="5" fill="#222222" />
+  <circle cx="145" cy="45" r="2" fill="#555555" />
+  
+  <circle cx="175" cy="45" r="8" fill="#333333" />
+  <circle cx="175" cy="45" r="5" fill="#222222" />
+  <circle cx="175" cy="45" r="2" fill="#555555" />
+  
+  <!-- 火车前灯 -->
+  <circle cx="15" cy="35" r="3" fill="#FFFF00" />
+  
+  <!-- 火车排气管 -->
+  <rect x="70" y="15" width="5" height="5" fill="#444444" />
+  <circle cx="72.5" cy="15" r="2.5" fill="#333333" />
+  
+  <!-- 火车细节 -->
+  <rect x="15" y="32" width="8" height="11" fill="#888888" />
+  <rect x="95" y="32" width="8" height="11" fill="#888888" />
+  <rect x="125" y="32" width="8" height="11" fill="#888888" />
+  <rect x="155" y="32" width="8" height="11" fill="#888888" />
+  
+  <!-- 车厢细节 -->
+  <rect x="105" y="22" width="2" height="6" fill="#666666" />
+  <rect x="125" y="22" width="2" height="6" fill="#666666" />
+  <rect x="145" y="22" width="2" height="6" fill="#666666" />
+  <rect x="165" y="22" width="2" height="6" fill="#666666" />
+</svg>

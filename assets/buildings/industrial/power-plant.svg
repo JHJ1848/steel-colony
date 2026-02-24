@@ -1,0 +1,47 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 发电厂主体 -->
+  <rect x="24" y="56" width="80" height="56" rx="2" fill="#424242"/>
+  <rect x="28" y="60" width="72" height="48" rx="1" fill="#37474F"/>
+  
+  <!-- 冷却塔 -->
+  <rect x="88" y="24" width="24" height="48" rx="2" fill="#616161"/>
+  <rect x="92" y="28" width="16" height="40" rx="1" fill="#757575"/>
+  
+  <!-- 烟囱 -->
+  <rect x="48" y="16" width="12" height="40" fill="#616161"/>
+  <rect x="46" y="12" width="16" height="4" fill="#757575"/>
+  
+  <!-- 窗户 -->
+  <rect x="36" y="68" width="12" height="8" fill="#FFC107" opacity="0.5"/>
+  <rect x="56" y="68" width="12" height="8" fill="#FFC107" opacity="0.5"/>
+  <rect x="76" y="68" width="12" height="8" fill="#FFC107" opacity="0.5"/>
+  
+  <rect x="36" y="84" width="12" height="8" fill="#FFC107" opacity="0.5"/>
+  <rect x="56" y="84" width="12" height="8" fill="#FFC107" opacity="0.5"/>
+  <rect x="76" y="84" width="12" height="8" fill="#FFC107" opacity="0.5"/>
+  
+  <!-- 门 -->
+  <rect x="60" y="88" width="8" height="20" fill="#212121"/>
+  
+  <!-- 输电线路 -->
+  <path d="M112 24L112 8L128 8" stroke="#9E9E9E" stroke-width="2"/>
+  <path d="M64 16L64 8L80 8" stroke="#9E9E9E" stroke-width="2"/>
+  
+  <!-- 细节 -->
+  <path d="M24 56L24 112L104 112L104 56" stroke="#616161" stroke-width="2"/>
+  <path d="M28 60L28 108L100 108L100 60" stroke="#424242" stroke-width="1"/>
+  <path d="M40 56L40 112" stroke="#616161" stroke-width="1"/>
+  <path d="M56 56L56 112" stroke="#616161" stroke-width="1"/>
+  <path d="M72 56L72 112" stroke="#616161" stroke-width="1"/>
+  <path d="M88 56L88 112" stroke="#616161" stroke-width="1"/>
+  
+  <!-- 烟雾效果 -->
+  <circle cx="54" cy="12" r="6" fill="#9E9E9E" opacity="0.6"/>
+  <circle cx="58" cy="8" r="4" fill="#BDBDBD" opacity="0.5"/>
+  <circle cx="50" cy="6" r="4" fill="#BDBDBD" opacity="0.5"/>
+  
+  <!-- 蒸汽效果 -->
+  <circle cx="100" cy="24" r="8" fill="#E0E0E0" opacity="0.6"/>
+  <circle cx="104" cy="20" r="6" fill="#F5F5F5" opacity="0.5"/>
+  <circle cx="96" cy="18" r="6" fill="#F5F5F5" opacity="0.5"/>
+</svg>

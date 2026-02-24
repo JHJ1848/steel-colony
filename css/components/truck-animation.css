@@ -1,0 +1,87 @@
+.truck-container {
+  position: relative;
+  display: inline-block;
+}
+
+.truck-wheel {
+  animation: wheel-rotate 1.5s linear infinite;
+  transform-origin: center;
+}
+
+.truck-exhaust {
+  position: absolute;
+  top: 15px;
+  right: 95px;
+  width: 5px;
+  height: 15px;
+  background: rgba(100, 100, 100, 0.5);
+  border-radius: 5px;
+  animation: exhaust-smoke 1.2s ease-in-out infinite;
+}
+
+.truck-exhaust::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  width: 11px;
+  height: 11px;
+  background: rgba(100, 100, 100, 0.3);
+  border-radius: 50%;
+  animation: exhaust-puff 1.2s ease-in-out infinite;
+}
+
+.truck-move {
+  animation: truck-drive 4s ease-in-out infinite;
+}
+
+@keyframes wheel-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes exhaust-smoke {
+  0% {
+    height: 0;
+    opacity: 0;
+  }
+  50% {
+    height: 15px;
+    opacity: 0.5;
+  }
+  100% {
+    height: 25px;
+    opacity: 0;
+  }
+}
+
+@keyframes exhaust-puff {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes truck-drive {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(15px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}

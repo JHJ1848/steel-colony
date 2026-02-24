@@ -1,0 +1,45 @@
+.railway-container {
+  position: relative;
+  overflow: hidden;
+  width: 200px;
+  height: 40px;
+}
+
+.railway-track {
+  animation: track-scroll 3s linear infinite;
+}
+
+@keyframes track-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-25px);
+  }
+}
+
+.railway-track::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 200px;
+  width: 200px;
+  height: 40px;
+  background: url('../assets/infrastructure/railway-track.svg') no-repeat;
+  background-size: 100% 100%;
+}
+
+.railway-track::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 400px;
+  width: 200px;
+  height: 40px;
+  background: url('../assets/infrastructure/railway-track.svg') no-repeat;
+  background-size: 100% 100%;
+}
+
+.railway-container:hover .railway-track {
+  animation-duration: 1.5s;
+}
