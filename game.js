@@ -9,12 +9,28 @@ class Game {
         this.resources = {
             wood: 0,
             stone: 0,
-            food: 0
+            food: 0,
+            steel: 0,
+            iron: 0,
+            coal: 0,
+            oil: 0
+        };
+
+        this.resourceCapacity = {
+            wood: 100,
+            stone: 100,
+            food: 100,
+            steel: 100,
+            iron: 100,
+            coal: 100,
+            oil: 100
         };
 
         this.buildings = [];
         this.resourcesNodes = [];
         this.selectedBuildType = null;
+        this.particleSystems = [];
+        this.animatingNodes = [];
 
         this.initCamera();
         this.initLighting();
@@ -68,6 +84,24 @@ class Game {
             const z = Math.random() * 180 - 90;
             this.createStone(x, z);
         }
+
+        for (let i = 0; i < 6; i++) {
+            const x = Math.random() * 180 - 90;
+            const z = Math.random() * 180 - 90;
+            this.createIronOre(x, z);
+        }
+
+        for (let i = 0; i < 7; i++) {
+            const x = Math.random() * 180 - 90;
+            const z = Math.random() * 180 - 90;
+            this.createCoal(x, z);
+        }
+
+        for (let i = 0; i < 5; i++) {
+            const x = Math.random() * 180 - 90;
+            const z = Math.random() * 180 - 90;
+            this.createOil(x, z);
+        }
     }
 
     createTree(x, z) {
@@ -105,6 +139,66 @@ class Game {
             position: new THREE.Vector3(x, 0, z),
             mesh: [stone],
             amount: 8
+        });
+    }
+
+    createIronOre(x, z) {
+        const geometry = new THREE.BoxGeometry(3, 2, 3);
+        const material = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.7, roughness: 0.3 });
+        const ironOre = new THREE.Mesh(geometry, material);
+        ironOre.position.set(x, 1, z);
+
+        this.scene.add(ironOre);
+
+        this.resourcesNodes.push({
+            type: 'iron',
+            position: new THREE.Vector3(x, 0, z),
+            mesh: [ironOre],
+            amount: 6
+        });
+    }
+
+    createCoal(x, z) {
+        const geometry = new THREE.BoxGeometry(2.5, 2.5, 2.5);
+        const material = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const coal = new THREE.Mesh(geometry, material);
+        coal.position.set(x, 1.25, z);
+
+        this.scene.add(coal);
+
+        this.resourcesNodes.push({
+            type: 'coal',
+            position: new THREE.Vector3(x, 0, z),
+            mesh: [coal],
+            amount: 7
+        });
+    }
+
+    createOil(x, z) {
+        const baseGeometry = new THREE.CylinderGeometry(2, 2, 1, 8);
+        const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.set(x, 0.5, z);
+
+        const pumpGeometry = new THREE.CylinderGeometry(0.5, 0.5, 3, 8);
+        const pumpMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const pump = new THREE.Mesh(pumpGeometry, pumpMaterial);
+        pump.position.set(x, 2, z);
+
+        const oilGeometry = new THREE.CylinderGeometry(1.5, 1.5, 0.5, 8);
+        const oilMaterial = new THREE.MeshStandardMaterial({ color: 0x111111 });
+        const oil = new THREE.Mesh(oilGeometry, oilMaterial);
+        oil.position.set(x, 1.25, z);
+
+        this.scene.add(base);
+        this.scene.add(pump);
+        this.scene.add(oil);
+
+        this.resourcesNodes.push({
+            type: 'oil',
+            position: new THREE.Vector3(x, 0, z),
+            mesh: [base, pump, oil],
+            amount: 5
         });
     }
 
@@ -189,6 +283,10 @@ class Game {
             case 'wood': return '木材';
             case 'stone': return '石头';
             case 'food': return '食物';
+            case 'steel': return '钢铁';
+            case 'iron': return '铁矿';
+            case 'coal': return '煤炭';
+            case 'oil': return '石油';
             default: return resource;
         }
     }
@@ -197,7 +295,8 @@ class Game {
         switch (type) {
             case 'mine': return '自动生产石头资源';
             case 'farm': return '自动生产食物资源';
-            case 'factory': return '自动生产木材和石头资源';
+            case 'factory': return '自动生产木材、石头和钢铁资源';
+            case 'warehouse': return '增加资源存储上限';
             default: return '';
         }
     }
@@ -217,7 +316,99 @@ class Game {
                 this.buildStructure(this.selectedBuildType, hitPoint);
             }
         } else {
-            this.checkResourceClick(event);
+            if (!this.checkBuildingClick(event)) {
+                this.checkResourceClick(event);
+            }
+        }
+    }
+
+    checkBuildingClick(event) {
+        const mouse = new THREE.Vector2();
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, this.camera);
+
+        for (const building of this.buildings) {
+            const intersects = raycaster.intersectObject(building.mesh);
+            if (intersects.length > 0) {
+                this.showBuildingMenu(building);
+                return true;
+            }
+        }
+        
+        this.hideBuildingMenu();
+        return false;
+    }
+
+    showBuildingMenu(building) {
+        this.hideBuildingMenu();
+        
+        const menu = document.createElement('div');
+        menu.className = 'building-menu';
+        menu.id = 'building-menu';
+        
+        const upgradeCost = this.getUpgradeCost(building.type, building.level);
+        const canUpgrade = this.canAfford(upgradeCost);
+        
+        let menuContent = `<strong>${this.getBuildTypeName(building.type)}</strong><br>`;
+        menuContent += `等级: ${building.level}<br>`;
+        
+        if (building.type === 'warehouse') {
+            menuContent += `存储容量加成: ${50 * building.level}/单位<br><br>`;
+        } else {
+            menuContent += `生产速率: ${building.productionRate.toFixed(1)}/秒<br><br>`;
+        }
+        
+        menuContent += `升级成本:<br>`;
+        
+        for (const [resource, amount] of Object.entries(upgradeCost)) {
+            menuContent += `${this.getResourceName(resource)}: ${amount}<br>`;
+        }
+        
+        menuContent += `<br><button id="upgrade-btn" ${!canUpgrade ? 'disabled' : ''}>
+            ${canUpgrade ? '升级' : '资源不足'}
+        </button>`;
+        
+        menu.innerHTML = menuContent;
+        menu.style.position = 'absolute';
+        menu.style.background = 'rgba(20, 20, 30, 0.9)';
+        menu.style.color = '#fff';
+        menu.style.padding = '15px';
+        menu.style.borderRadius = '5px';
+        menu.style.border = '1px solid #444';
+        menu.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.3)';
+        menu.style.pointerEvents = 'auto';
+        menu.style.zIndex = '1000';
+        menu.style.left = '50%';
+        menu.style.top = '50%';
+        menu.style.transform = 'translate(-50%, -50%)';
+        
+        document.body.appendChild(menu);
+        
+        const upgradeBtn = document.getElementById('upgrade-btn');
+        if (upgradeBtn) {
+            upgradeBtn.style.marginTop = '10px';
+            upgradeBtn.style.padding = '8px 15px';
+            upgradeBtn.style.backgroundColor = canUpgrade ? '#0066cc' : '#555';
+            upgradeBtn.style.color = '#fff';
+            upgradeBtn.style.border = 'none';
+            upgradeBtn.style.borderRadius = '3px';
+            upgradeBtn.style.cursor = canUpgrade ? 'pointer' : 'not-allowed';
+            
+            upgradeBtn.addEventListener('click', () => {
+                if (this.upgradeBuilding(building)) {
+                    this.showBuildingMenu(building);
+                }
+            });
+        }
+    }
+
+    hideBuildingMenu() {
+        const menu = document.getElementById('building-menu');
+        if (menu) {
+            menu.remove();
         }
     }
 
@@ -241,11 +432,142 @@ class Game {
         }
     }
 
+    createParticleSystem(position, color) {
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 20;
+
+        const posArray = new Float32Array(particlesCount * 3);
+        for (let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 2;
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.5,
+            color: color,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
+        particleSystem.position.copy(position);
+        particleSystem.position.y += 5;
+
+        this.scene.add(particleSystem);
+        this.particleSystems.push({
+            system: particleSystem,
+            age: 0,
+            maxAge: 1000
+        });
+
+        return particleSystem;
+    }
+
+    animateResourceNode(node) {
+        if (!node.isAnimating) {
+            node.isAnimating = true;
+            node.animationStartTime = Date.now();
+            node.originalScale = [];
+            
+            for (const mesh of node.mesh) {
+                node.originalScale.push(mesh.scale.clone());
+            }
+            
+            this.animatingNodes.push(node);
+        }
+    }
+
+    updateAnimations() {
+        const now = Date.now();
+        
+        // Update particle systems
+        for (let i = this.particleSystems.length - 1; i >= 0; i--) {
+            const particleSystem = this.particleSystems[i];
+            particleSystem.age += 16; // Assume 60 FPS
+            
+            if (particleSystem.age > particleSystem.maxAge) {
+                this.scene.remove(particleSystem.system);
+                this.particleSystems.splice(i, 1);
+            } else {
+                // Animate particles
+                particleSystem.system.rotation.y += 0.02;
+                particleSystem.system.material.opacity = 1 - (particleSystem.age / particleSystem.maxAge);
+                
+                // Move particles upward
+                const position = particleSystem.system.geometry.attributes.position;
+                for (let j = 0; j < position.count; j++) {
+                    position.setY(j, position.getY(j) + 0.01);
+                }
+                position.needsUpdate = true;
+            }
+        }
+        
+        // Update animating resource nodes
+        for (let i = this.animatingNodes.length - 1; i >= 0; i--) {
+            const node = this.animatingNodes[i];
+            const elapsed = now - node.animationStartTime;
+            const duration = 500;
+            
+            if (elapsed > duration) {
+                // Reset scale
+                for (let j = 0; j < node.mesh.length; j++) {
+                    node.mesh[j].scale.copy(node.originalScale[j]);
+                }
+                node.isAnimating = false;
+                this.animatingNodes.splice(i, 1);
+            } else {
+                // Animate scale
+                const progress = elapsed / duration;
+                const scaleFactor = 1 + Math.sin(progress * Math.PI) * 0.2;
+                
+                for (const mesh of node.mesh) {
+                    mesh.scale.set(
+                        node.originalScale[0].x * scaleFactor,
+                        node.originalScale[0].y * scaleFactor,
+                        node.originalScale[0].z * scaleFactor
+                    );
+                }
+            }
+        }
+    }
+
     collectResource(node, index) {
-        if (node.type === 'tree') {
-            this.resources.wood += 1;
-        } else if (node.type === 'stone') {
-            this.resources.stone += 1;
+        let resourceType;
+        let particleColor;
+        
+        switch (node.type) {
+            case 'tree':
+                resourceType = 'wood';
+                particleColor = 0x228B22;
+                break;
+            case 'stone':
+                resourceType = 'stone';
+                particleColor = 0x808080;
+                break;
+            case 'iron':
+                resourceType = 'iron';
+                particleColor = 0xb0b0b0;
+                break;
+            case 'coal':
+                resourceType = 'coal';
+                particleColor = 0x333333;
+                break;
+            case 'oil':
+                resourceType = 'oil';
+                particleColor = 0x111111;
+                break;
+        }
+
+        if (resourceType) {
+            this.resources[resourceType] += 1;
+            
+            // Create particle effect
+            this.createParticleSystem(node.position, particleColor);
+            
+            // Animate resource node
+            this.animateResourceNode(node);
         }
 
         node.amount -= 1;
@@ -276,19 +598,71 @@ class Game {
                 cost = { wood: 15, stone: 10 };
                 model = this.createFactoryModel(position);
                 break;
+            case 'warehouse':
+                cost = { wood: 10, stone: 15, steel: 5 };
+                model = this.createWarehouseModel(position);
+                break;
         }
 
         if (this.canAfford(cost)) {
             this.payCost(cost);
-            this.buildings.push({
+            const building = {
                 type: type,
                 position: position,
-                mesh: model
-            });
+                mesh: model,
+                level: 1
+            };
+            
+            if (type !== 'warehouse') {
+                building.lastProductionTime = Date.now();
+                building.productionRate = this.getBaseProductionRate(type);
+            }
+            
+            this.buildings.push(building);
             this.selectedBuildType = null;
             this.updateBuildMenu();
             this.updateResourceDisplay();
         }
+    }
+
+    getBaseProductionRate(type) {
+        switch (type) {
+            case 'mine': return 1; // 每秒生成 1 个石头
+            case 'farm': return 1; // 每秒生成 1 个食物
+            case 'factory': return 0.5; // 每秒生成 0.5 个木材、石头和钢铁
+            case 'warehouse': return 0; // 仓库不生产资源
+            default: return 0;
+        }
+    }
+
+    upgradeBuilding(building) {
+        const upgradeCost = this.getUpgradeCost(building.type, building.level);
+        if (this.canAfford(upgradeCost)) {
+            this.payCost(upgradeCost);
+            building.level += 1;
+            building.productionRate = this.getBaseProductionRate(building.type) * (1 + (building.level - 1) * 0.5); // 每级提升 50% 效率
+            this.updateResourceDisplay();
+            return true;
+        }
+        return false;
+    }
+
+    getUpgradeCost(type, level) {
+        const baseCost = {
+            mine: { stone: 10, wood: 5 },
+            farm: { wood: 8, stone: 3 },
+            factory: { wood: 15, stone: 10 },
+            warehouse: { wood: 10, stone: 15, steel: 5 }
+        };
+        
+        const costMultiplier = Math.pow(1.5, level);
+        const cost = {};
+        
+        for (const [resource, amount] of Object.entries(baseCost[type])) {
+            cost[resource] = Math.floor(amount * costMultiplier);
+        }
+        
+        return cost;
     }
 
     canAfford(cost) {
@@ -333,6 +707,15 @@ class Game {
         return factory;
     }
 
+    createWarehouseModel(position) {
+        const geometry = new THREE.BoxGeometry(12, 8, 12);
+        const material = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+        const warehouse = new THREE.Mesh(geometry, material);
+        warehouse.position.set(position.x, 4, position.z);
+        this.scene.add(warehouse);
+        return warehouse;
+    }
+
     selectBuildType(type) {
         this.selectedBuildType = type;
         this.updateBuildMenu();
@@ -352,6 +735,9 @@ class Game {
         document.getElementById('wood-count').textContent = this.resources.wood;
         document.getElementById('stone-count').textContent = this.resources.stone;
         document.getElementById('food-count').textContent = this.resources.food;
+        if (document.getElementById('steel-count')) {
+            document.getElementById('steel-count').textContent = this.resources.steel;
+        }
     }
 
     animate() {
@@ -365,21 +751,60 @@ class Game {
     }
 
     updateBuildings() {
+        const now = Date.now();
+        
+        // 计算仓库提供的存储容量加成
+        let warehouseCapacityBonus = 0;
         for (const building of this.buildings) {
-            if (building.type === 'mine') {
-                if (Math.random() < 0.01) {
-                    this.resources.stone += 1;
-                    this.updateResourceDisplay();
-                }
-            } else if (building.type === 'farm') {
-                if (Math.random() < 0.01) {
-                    this.resources.food += 1;
-                    this.updateResourceDisplay();
-                }
-            } else if (building.type === 'factory') {
-                if (Math.random() < 0.005) {
-                    this.resources.wood += 1;
-                    this.resources.stone += 1;
+            if (building.type === 'warehouse') {
+                warehouseCapacityBonus += 50 * building.level; // 每个仓库增加 50 * 等级 的存储容量
+            }
+        }
+        
+        // 更新资源存储上限
+        const baseCapacity = 100;
+        this.resourceCapacity = {
+            wood: baseCapacity + warehouseCapacityBonus,
+            stone: baseCapacity + warehouseCapacityBonus,
+            food: baseCapacity + warehouseCapacityBonus,
+            steel: baseCapacity + warehouseCapacityBonus
+        };
+        
+        // 处理资源生产
+        for (const building of this.buildings) {
+            if (building.type === 'warehouse') continue; // 仓库不生产资源
+            
+            const timeElapsed = (now - building.lastProductionTime) / 1000; // 转换为秒
+            
+            if (timeElapsed >= 1) { // 每秒检查一次
+                const productionAmount = Math.floor(timeElapsed * building.productionRate);
+                
+                if (productionAmount > 0) {
+                    switch (building.type) {
+                        case 'mine':
+                            if (this.resources.stone < this.resourceCapacity.stone) {
+                                this.resources.stone += Math.min(productionAmount, this.resourceCapacity.stone - this.resources.stone);
+                            }
+                            break;
+                        case 'farm':
+                            if (this.resources.food < this.resourceCapacity.food) {
+                                this.resources.food += Math.min(productionAmount, this.resourceCapacity.food - this.resources.food);
+                            }
+                            break;
+                        case 'factory':
+                            if (this.resources.wood < this.resourceCapacity.wood) {
+                                this.resources.wood += Math.min(productionAmount, this.resourceCapacity.wood - this.resources.wood);
+                            }
+                            if (this.resources.stone < this.resourceCapacity.stone) {
+                                this.resources.stone += Math.min(productionAmount, this.resourceCapacity.stone - this.resources.stone);
+                            }
+                            if (this.resources.steel < this.resourceCapacity.steel) {
+                                this.resources.steel += Math.min(productionAmount, this.resourceCapacity.steel - this.resources.steel);
+                            }
+                            break;
+                    }
+                    
+                    building.lastProductionTime = now;
                     this.updateResourceDisplay();
                 }
             }
