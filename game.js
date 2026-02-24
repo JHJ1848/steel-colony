@@ -29,6 +29,16 @@ class Game {
         this.buildings = [];
         this.resourcesNodes = [];
         this.selectedBuildType = null;
+        this.gameGoals = [
+            { type: 'build', target: 5, building: 'mine', description: '建造 5 个矿场' },
+            { type: 'build', target: 3, building: 'farm', description: '建造 3 个农场' },
+            { type: 'build', target: 2, building: 'factory', description: '建造 2 个工厂' },
+            { type: 'resource', target: 100, resource: 'steel', description: '收集 100 个钢铁' },
+            { type: 'build', target: 1, building: 'warehouse', description: '建造 1 个仓库' },
+            { type: 'totalBuildings', target: 15, description: '建造总计 15 个建筑' }
+        ];
+        this.currentGoalIndex = 0;
+        this.gameStartedTime = Date.now();
         this.particleSystems = [];
         this.animatingNodes = [];
 
@@ -568,6 +578,9 @@ class Game {
             
             // Animate resource node
             this.animateResourceNode(node);
+            
+            // Show resource gain text
+            this.showResourceGainText(node.position, resourceType, 1);
         }
 
         node.amount -= 1;
@@ -740,10 +753,56 @@ class Game {
         }
     }
 
+    showResourceGainText(position, resourceType, amount) {
+        const textElement = document.createElement('div');
+        textElement.className = 'resource-gain-text';
+        textElement.textContent = `+${amount} ${this.getResourceName(resourceType)}`;
+        textElement.style.position = 'absolute';
+        textElement.style.color = '#00ff00';
+        textElement.style.fontSize = '12px';
+        textElement.style.fontWeight = 'bold';
+        textElement.style.pointerEvents = 'none';
+        textElement.style.zIndex = '1000';
+        textElement.style.textShadow = '0 0 5px rgba(0, 255, 0, 0.5)';
+        textElement.style.opacity = '1';
+        
+        // Convert 3D position to 2D screen coordinates
+        const vector = new THREE.Vector3(position.x, position.y + 10, position.z);
+        vector.project(this.camera);
+        
+        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+        
+        textElement.style.left = `${x}px`;
+        textElement.style.top = `${y}px`;
+        
+        document.body.appendChild(textElement);
+        
+        // Animate the text
+        let startTime = Date.now();
+        const duration = 1000;
+        
+        const animateText = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / duration;
+            
+            if (progress < 1) {
+                textElement.style.top = `${y - progress * 30}px`;
+                textElement.style.opacity = `${1 - progress}`;
+                requestAnimationFrame(animateText);
+            } else {
+                document.body.removeChild(textElement);
+            }
+        };
+        
+        animateText();
+    }
+
     animate() {
         requestAnimationFrame(() => this.animate());
         this.render();
         this.updateBuildings();
+        this.updateAnimations();
     }
 
     render() {
