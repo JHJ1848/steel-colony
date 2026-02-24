@@ -753,6 +753,90 @@ class Game {
         }
     }
 
+    updateGoalDisplay() {
+        if (this.currentGoalIndex >= this.gameGoals.length) {
+            this.showGameComplete();
+            return;
+        }
+
+        const currentGoal = this.gameGoals[this.currentGoalIndex];
+        let progress = 0;
+
+        switch (currentGoal.type) {
+            case 'build':
+                progress = this.buildings.filter(b => b.type === currentGoal.building).length;
+                break;
+            case 'resource':
+                progress = this.resources[currentGoal.resource] || 0;
+                break;
+            case 'totalBuildings':
+                progress = this.buildings.length;
+                break;
+        }
+
+        const percentage = Math.min(Math.floor((progress / currentGoal.target) * 100), 100);
+
+        if (document.getElementById('current-goal')) {
+            document.getElementById('current-goal').textContent = currentGoal.description;
+        }
+        if (document.getElementById('goal-progress')) {
+            document.getElementById('goal-progress').textContent = `进度: ${progress}/${currentGoal.target} (${percentage}%)`;
+        }
+
+        if (progress >= currentGoal.target) {
+            this.currentGoalIndex++;
+            this.updateGoalDisplay();
+        }
+    }
+
+    showGameComplete() {
+        const gameTime = Math.floor((Date.now() - this.gameStartedTime) / 1000);
+        const totalBuildings = this.buildings.length;
+        const totalResources = Object.values(this.resources).reduce((sum, value) => sum + value, 0);
+
+        const modal = document.createElement('div');
+        modal.className = 'game-complete-modal';
+        modal.id = 'game-complete-modal';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.background = 'rgba(0, 0, 0, 0.8)';
+        modal.style.display = 'flex';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.zIndex = '2000';
+
+        const content = document.createElement('div');
+        content.style.background = 'rgba(20, 20, 30, 0.95)';
+        content.style.color = '#fff';
+        content.style.padding = '30px';
+        content.style.borderRadius = '10px';
+        content.style.border = '1px solid #00ffff';
+        content.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.5)';
+        content.style.textAlign = 'center';
+        content.style.minWidth = '300px';
+
+        content.innerHTML = `
+            <h2 style="color: #00ffff; margin-bottom: 20px;">游戏完成！</h2>
+            <div style="margin: 10px 0;">总游戏时间: ${Math.floor(gameTime / 60)}分${gameTime % 60}秒</div>
+            <div style="margin: 10px 0;">建造的建筑总数: ${totalBuildings}</div>
+            <div style="margin: 10px 0;">收集的资源总数: ${totalResources}</div>
+            <button id="restart-btn" style="margin-top: 20px; padding: 10px 20px; background: #0066cc; color: #fff; border: none; border-radius: 5px; cursor: pointer;">重新开始</button>
+        `;
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        const restartBtn = document.getElementById('restart-btn');
+        if (restartBtn) {
+            restartBtn.addEventListener('click', () => {
+                location.reload();
+            });
+        }
+    }
+
     showResourceGainText(position, resourceType, amount) {
         const textElement = document.createElement('div');
         textElement.className = 'resource-gain-text';
@@ -802,7 +886,7 @@ class Game {
         requestAnimationFrame(() => this.animate());
         this.render();
         this.updateBuildings();
-        this.updateAnimations();
+        this.updateGoalDisplay();
     }
 
     render() {
