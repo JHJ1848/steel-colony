@@ -49,6 +49,13 @@ class Game {
         this.particleSystems = [];
         this.animatingNodes = [];
         
+        // 殖民地状态
+        this.colonyStatus = {
+            level: 1,
+            population: 10,
+            prosperity: 25
+        };
+        
         // 初始化游戏设置
         this.settings = this.loadSettings();
         
@@ -61,10 +68,12 @@ class Game {
         this.initResourceNodes();
         this.initEventListeners();
         this.updateGoalDisplay();
+        this.updateColonyStatusDisplay();
         
         // 模拟加载过程
         setTimeout(() => {
             this.hideLoadScreen();
+            this.showStoryModal();
             this.animate();
         }, 2000);
     }
@@ -542,6 +551,70 @@ class Game {
         if (loadScreen) {
             loadScreen.remove();
         }
+    }
+
+    showStoryModal() {
+        const modal = document.createElement('div');
+        modal.className = 'story-modal';
+        modal.id = 'story-modal';
+        
+        const content = document.createElement('div');
+        content.className = 'story-content';
+        
+        content.innerHTML = `
+            <h2>Steel Colony</h2>
+            <p>在遥远的未来，人类文明扩张到了星际空间。你被任命为一个新殖民地的指挥官，负责在这个资源丰富但环境恶劣的星球上建立一个繁荣的工业殖民地。</p>
+            <p>你的任务是管理资源、建造设施、发展科技，将这个荒芜的星球转变为一个充满活力的工业中心。</p>
+            <p>钢铁是这个殖民地的基石，也是你成功的关键。通过开采矿物、发展农业、建立工厂，你将逐步实现殖民地的自给自足和繁荣发展。</p>
+            <p>记住，每一个决策都将影响殖民地的命运。祝你好运，指挥官！</p>
+            <button id="start-game-btn">开始游戏</button>
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+        
+        const startBtn = document.getElementById('start-game-btn');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                this.hideStoryModal();
+            });
+        }
+    }
+
+    hideStoryModal() {
+        const modal = document.getElementById('story-modal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    updateColonyStatusDisplay() {
+        document.getElementById('colony-level').textContent = this.colonyStatus.level;
+        document.getElementById('total-buildings').textContent = this.buildings.length;
+        document.getElementById('colony-population').textContent = this.colonyStatus.population;
+        document.getElementById('colony-prosperity').textContent = `${this.colonyStatus.prosperity}%`;
+    }
+
+    updateColonyStatus() {
+        // 根据建筑数量和类型更新殖民地状态
+        const buildingCount = this.buildings.length;
+        
+        // 计算新的殖民地等级
+        const newLevel = Math.floor(buildingCount / 5) + 1;
+        if (newLevel > this.colonyStatus.level) {
+            this.colonyStatus.level = newLevel;
+        }
+        
+        // 计算新的人口
+        const newPopulation = 10 + buildingCount * 2;
+        this.colonyStatus.population = newPopulation;
+        
+        // 计算新的繁荣度
+        const newProsperity = Math.min(100, 25 + buildingCount * 3);
+        this.colonyStatus.prosperity = newProsperity;
+        
+        // 更新显示
+        this.updateColonyStatusDisplay();
     }
 
     saveGame() {
@@ -1070,6 +1143,7 @@ class Game {
             this.selectedBuildType = null;
             this.updateBuildMenu();
             this.updateResourceDisplay();
+            this.updateColonyStatus();
         }
     }
 
